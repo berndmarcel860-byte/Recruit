@@ -498,6 +498,205 @@ switch ($action) {
         jsonResponse(['success' => true, 'message' => 'Job closed successfully']);
         break;
         
+    // Company Management
+    case 'get_companies':
+        $page = (int)($_GET['page'] ?? 1);
+        $limit = min((int)($_GET['limit'] ?? 20), 100);
+        $search = sanitize($_GET['search'] ?? '');
+        $industry = sanitize($_GET['industry'] ?? '');
+        $isActive = $_GET['is_active'] ?? '';
+        
+        $where = "1=1";
+        $params = [];
+        
+        if ($search) {
+            $where .= " AND (name LIKE :search OR description LIKE :search)";
+            $params['search'] = "%$search%";
+        }
+        if ($industry) {
+            $where .= " AND industry = :industry";
+            $params['industry'] = $industry;
+        }
+        if ($isActive !== '') {
+            $where .= " AND is_active = :is_active";
+            $params['is_active'] = (int)$isActive;
+        }
+        
+        $total = $db->count('companies', $where, $params);
+        $pagination = paginate($total, $limit, $page);
+        
+        $sql = "SELECT * FROM companies WHERE $where ORDER BY name ASC
+                LIMIT {$pagination['offset']}, $limit";
+        
+        $companies = $db->fetchAll($sql, $params);
+        
+        // Get job counts
+        foreach ($companies as &$company) {
+            $jobCount = $db->fetch(
+                "SELECT COUNT(*) as count FROM jobs WHERE company_id = :id AND status = 'active'",
+                ['id' => $company['id']]
+            );
+            $company['job_count'] = $jobCount['count'];
+        }
+        
+        jsonResponse(['success' => true, 'companies' => $companies, 'pagination' => $pagination]);
+        break;
+        
+    case 'get_company':
+        $id = (int)($_GET['id'] ?? 0);
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Company ID is required'], 400);
+        }
+        
+        $company = $db->fetch("SELECT * FROM companies WHERE id = :id", ['id' => $id]);
+        
+        if (!$company) {
+            jsonResponse(['success' => false, 'message' => 'Company not found'], 404);
+        }
+        
+        jsonResponse(['success' => true, 'company' => $company]);
+        break;
+        
+    case 'create_company':
+        $required = ['name', 'industry', 'description'];
+        foreach ($required as $field) {
+            if (empty($_POST[$field])) {
+                jsonResponse(['success' => false, 'message' => ucfirst(str_replace('_', ' ', $field)) . ' is required'], 400);
+            }
+        }
+        
+        $data = [
+            'name' => sanitize($_POST['name']),
+            'description' => sanitize($_POST['description']),
+            'industry' => sanitize($_POST['industry']),
+            'website' => sanitize($_POST['website'] ?? ''),
+            'email' => sanitize($_POST['email'] ?? ''),
+            'phone' => sanitize($_POST['phone'] ?? ''),
+            'size' => sanitize($_POST['size'] ?? '1-10'),
+            'headquarters' => sanitize($_POST['headquarters'] ?? ''),
+            'is_active' => (int)($_POST['is_active'] ?? 1)
+        ];
+        
+        if (!empty($_POST['founded_year'])) {
+            $data['founded_year'] = (int)$_POST['founded_year'];
+        }
+        
+        $companyId = $db->insert('companies', $data);
+        logActivity($_SESSION['user_id'], 'create_company', 'company', $companyId);
+        
+        jsonResponse(['success' => true, 'message' => 'Company created successfully', 'company_id' => $companyId]);
+        break;
+        
+    case 'update_company':
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Company ID is required'], 400);
+        }
+        
+        $data = [];
+        $allowedFields = ['name', 'description', 'industry', 'website', 'email', 'phone', 
+                          'size', 'headquarters', 'founded_year', 'is_active'];
+        
+        foreach ($allowedFields as $field) {
+            if (isset($_POST[$field])) {
+                $data[$field] = sanitize($_POST[$field]);
+            }
+        }
+        
+        if (empty($data)) {
+            jsonResponse(['success' => false, 'message' => 'No data to update'], 400);
+        }
+        
+        $db->update('companies', $data, 'id = :id', ['id' => $id]);
+        logActivity($_SESSION['user_id'], 'update_company', 'company', $id);
+        
+        jsonResponse(['success' => true, 'message' => 'Company updated successfully']);
+        break;
+        
+    case 'delete_company':
+        $id = (int)($_POST['id'] ?? 0);
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Company ID is required'], 400);
+        }
+        
+        $db->update('companies', ['is_active' => 0], 'id = :id', ['id' => $id]);
+        logActivity($_SESSION['user_id'], 'deactivate_company', 'company', $id);
+        
+        jsonResponse(['success' => true, 'message' => 'Company deactivated successfully']);
+        break;
+        
+    // Popular Interests (Most Used)
+    case 'get_popular_interests':
+        $interests = $db->fetchAll(
+            "SELECT interests FROM users WHERE interests IS NOT NULL AND interests != '[]' AND interests != 'null'"
+        );
+        
+        $interestCounts = [];
+        foreach ($interests as $row) {
+            $userInterests = json_decode($row['interests'], true);
+            if (is_array($userInterests)) {
+                foreach ($userInterests as $interest) {
+                    $interest = trim($interest);
+                    if ($interest) {
+                        $interestCounts[$interest] = ($interestCounts[$interest] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+        
+        arsort($interestCounts);
+        $popularInterests = array_slice(array_keys($interestCounts), 0, 15);
+        
+        // Add some defaults if not enough
+        $defaults = ['Technology', 'Healthcare', 'Finance', 'Education', 'Marketing', 
+                     'Sales', 'Engineering', 'Design', 'Data Science', 'Consulting',
+                     'E-commerce', 'Manufacturing', 'Real Estate', 'Media', 'Legal'];
+        
+        foreach ($defaults as $default) {
+            if (!in_array($default, $popularInterests) && count($popularInterests) < 15) {
+                $popularInterests[] = $default;
+            }
+        }
+        
+        jsonResponse(['success' => true, 'interests' => $popularInterests]);
+        break;
+        
+    // Popular Skills (Most Used)
+    case 'get_popular_skills':
+        $skills = $db->fetchAll(
+            "SELECT skills FROM users WHERE skills IS NOT NULL AND skills != '[]' AND skills != 'null'"
+        );
+        
+        $skillCounts = [];
+        foreach ($skills as $row) {
+            $userSkills = json_decode($row['skills'], true);
+            if (is_array($userSkills)) {
+                foreach ($userSkills as $skill) {
+                    $skill = trim($skill);
+                    if ($skill) {
+                        $skillCounts[$skill] = ($skillCounts[$skill] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+        
+        arsort($skillCounts);
+        $popularSkills = array_slice(array_keys($skillCounts), 0, 20);
+        
+        // Add some defaults if not enough
+        $defaults = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AWS',
+                     'HTML/CSS', 'TypeScript', 'Git', 'Docker', 'C++', 'PHP', 'Vue.js',
+                     'MongoDB', 'Kubernetes', 'Go', 'Ruby', 'Swift', 'Machine Learning'];
+        
+        foreach ($defaults as $default) {
+            if (!in_array($default, $popularSkills) && count($popularSkills) < 20) {
+                $popularSkills[] = $default;
+            }
+        }
+        
+        jsonResponse(['success' => true, 'skills' => $popularSkills]);
+        break;
+        
     default:
         jsonResponse(['success' => false, 'message' => 'Invalid action'], 400);
 }

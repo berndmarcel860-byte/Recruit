@@ -1,6 +1,7 @@
 <?php
 /**
  * Admin Dashboard
+ * Professional admin interface with statistics and quick actions
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -21,12 +22,20 @@ $stats = [
 
 // Recent applications
 $recentApplications = $db->fetchAll(
-    "SELECT a.*, u.first_name, u.last_name, u.email, j.title as job_title
+    "SELECT a.*, u.first_name, u.last_name, u.email, j.title as job_title, c.name as company_name
      FROM applications a
      JOIN users u ON a.user_id = u.id
      JOIN jobs j ON a.job_id = j.id
+     LEFT JOIN companies c ON j.company_id = c.id
      ORDER BY a.created_at DESC
      LIMIT 10"
+);
+
+// Recent users
+$recentUsers = $db->fetchAll(
+    "SELECT id, first_name, last_name, email, city, created_at 
+     FROM users WHERE role = 'user' 
+     ORDER BY created_at DESC LIMIT 5"
 );
 ?>
 <!DOCTYPE html>
@@ -38,10 +47,22 @@ $recentApplications = $db->fetchAll(
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
+    <style>
+        .avatar-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
 </head>
-<body>
+<body class="bg-light">
     <!-- Admin Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="index.php">
                 <i class="bi bi-briefcase-fill me-2"></i><?= APP_NAME ?> Admin
@@ -51,11 +72,12 @@ $recentApplications = $db->fetchAll(
             </button>
             <div class="collapse navbar-collapse" id="adminNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link active" href="index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="users.php">Users</a></li>
-                    <li class="nav-item"><a class="nav-link" href="applications.php">Applications</a></li>
-                    <li class="nav-item"><a class="nav-link" href="jobs.php">Jobs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="appointments.php">Appointments</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="index.php"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="users.php"><i class="bi bi-people me-1"></i>Users</a></li>
+                    <li class="nav-item"><a class="nav-link" href="applications.php"><i class="bi bi-file-text me-1"></i>Applications</a></li>
+                    <li class="nav-item"><a class="nav-link" href="companies.php"><i class="bi bi-building me-1"></i>Companies</a></li>
+                    <li class="nav-item"><a class="nav-link" href="jobs.php"><i class="bi bi-briefcase me-1"></i>Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="appointments.php"><i class="bi bi-calendar me-1"></i>Appointments</a></li>
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
@@ -75,19 +97,29 @@ $recentApplications = $db->fetchAll(
     </nav>
     
     <div class="container-fluid py-4">
-        <h2 class="mb-4">Dashboard</h2>
+        <!-- Welcome Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="mb-1">Welcome back, <?= htmlspecialchars(getCurrentUser()['first_name']) ?>!</h2>
+                <p class="text-muted mb-0">Here's what's happening with your recruitment platform today.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="jobs.php" class="btn btn-primary"><i class="bi bi-plus-lg me-2"></i>Create Job</a>
+                <a href="companies.php" class="btn btn-outline-primary"><i class="bi bi-building me-2"></i>Add Company</a>
+            </div>
+        </div>
         
         <!-- Stats -->
         <div class="row g-4 mb-4">
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
                                 <i class="bi bi-people"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['total_users'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['total_users']) ?></h3>
                                 <small class="text-muted">Users</small>
                             </div>
                         </div>
@@ -95,14 +127,14 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
                                 <i class="bi bi-briefcase"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['active_jobs'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['active_jobs']) ?></h3>
                                 <small class="text-muted">Active Jobs</small>
                             </div>
                         </div>
@@ -110,14 +142,14 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
                                 <i class="bi bi-file-earmark-text"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['total_applications'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['total_applications']) ?></h3>
                                 <small class="text-muted">Applications</small>
                             </div>
                         </div>
@@ -125,14 +157,14 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
                                 <i class="bi bi-clock"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['pending_applications'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['pending_applications']) ?></h3>
                                 <small class="text-muted">Pending</small>
                             </div>
                         </div>
@@ -140,14 +172,14 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-danger bg-opacity-10 text-danger me-3">
                                 <i class="bi bi-calendar-event"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['upcoming_appointments'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['upcoming_appointments']) ?></h3>
                                 <small class="text-muted">Appointments</small>
                             </div>
                         </div>
@@ -155,14 +187,14 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             <div class="col-md-6 col-lg-4 col-xl-2">
-                <div class="card border-0 shadow-sm stat-card">
+                <div class="card border-0 shadow-sm stat-card h-100">
                     <div class="card-body">
                         <div class="d-flex align-items-center">
                             <div class="stat-icon bg-secondary bg-opacity-10 text-secondary me-3">
                                 <i class="bi bi-building"></i>
                             </div>
                             <div>
-                                <h4 class="mb-0"><?= $stats['total_companies'] ?></h4>
+                                <h3 class="mb-0"><?= number_format($stats['total_companies']) ?></h3>
                                 <small class="text-muted">Companies</small>
                             </div>
                         </div>
@@ -176,38 +208,69 @@ $recentApplications = $db->fetchAll(
             <div class="col-lg-8">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
-                        <h5 class="mb-0">Recent Applications</h5>
-                        <a href="applications.php" class="text-decoration-none">View All</a>
+                        <h5 class="mb-0"><i class="bi bi-file-text me-2"></i>Recent Applications</h5>
+                        <a href="applications.php" class="btn btn-sm btn-outline-primary">View All</a>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover mb-0">
+                            <table class="table table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Applicant</th>
+                                        <th class="ps-4">Applicant</th>
                                         <th>Job</th>
                                         <th>Status</th>
                                         <th>Match</th>
                                         <th>Applied</th>
-                                        <th>Actions</th>
+                                        <th class="text-end pe-4">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    <?php if (empty($recentApplications)): ?>
+                                    <tr>
+                                        <td colspan="6" class="text-center py-4 text-muted">No applications yet</td>
+                                    </tr>
+                                    <?php else: ?>
                                     <?php foreach ($recentApplications as $app): ?>
                                     <tr>
-                                        <td>
-                                            <a href="user.php?id=<?= $app['user_id'] ?>"><?= htmlspecialchars($app['first_name'] . ' ' . $app['last_name']) ?></a>
-                                            <br><small class="text-muted"><?= htmlspecialchars($app['email']) ?></small>
+                                        <td class="ps-4">
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle bg-primary text-white me-2">
+                                                    <?= strtoupper(substr($app['first_name'], 0, 1) . substr($app['last_name'], 0, 1)) ?>
+                                                </div>
+                                                <div>
+                                                    <a href="user.php?id=<?= $app['user_id'] ?>" class="text-decoration-none fw-medium">
+                                                        <?= htmlspecialchars($app['first_name'] . ' ' . $app['last_name']) ?>
+                                                    </a>
+                                                    <br><small class="text-muted"><?= htmlspecialchars($app['email']) ?></small>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td><?= htmlspecialchars($app['job_title']) ?></td>
-                                        <td><span class="badge <?= getStatusBadgeClass($app['status']) ?>"><?= ucfirst($app['status']) ?></span></td>
-                                        <td><?= $app['match_score'] ? round($app['match_score']) . '%' : '-' ?></td>
-                                        <td><?= timeAgo($app['created_at']) ?></td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="reviewApplication(<?= $app['id'] ?>)">Review</button>
+                                            <div class="fw-medium"><?= htmlspecialchars($app['job_title']) ?></div>
+                                            <small class="text-muted"><?= htmlspecialchars($app['company_name'] ?? '') ?></small>
+                                        </td>
+                                        <td><span class="badge <?= getStatusBadgeClass($app['status']) ?>"><?= ucfirst($app['status']) ?></span></td>
+                                        <td>
+                                            <?php if ($app['match_score']): ?>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress flex-grow-1 me-2" style="height: 6px; width: 50px;">
+                                                    <div class="progress-bar <?= $app['match_score'] >= 70 ? 'bg-success' : ($app['match_score'] >= 40 ? 'bg-warning' : 'bg-danger') ?>" style="width: <?= $app['match_score'] ?>%"></div>
+                                                </div>
+                                                <small><?= round($app['match_score']) ?>%</small>
+                                            </div>
+                                            <?php else: ?>
+                                            <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><small><?= timeAgo($app['created_at']) ?></small></td>
+                                        <td class="text-end pe-4">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="reviewApplication(<?= $app['id'] ?>)">
+                                                <i class="bi bi-check2-square"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -215,30 +278,82 @@ $recentApplications = $db->fetchAll(
                 </div>
             </div>
             
-            <!-- Quick Actions -->
+            <!-- Sidebar -->
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm">
+                <!-- Quick Actions -->
+                <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-transparent py-3">
-                        <h5 class="mb-0">Quick Actions</h5>
+                        <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
-                            <a href="users.php" class="btn btn-outline-primary"><i class="bi bi-people me-2"></i>Manage Users</a>
-                            <a href="applications.php" class="btn btn-outline-primary"><i class="bi bi-file-text me-2"></i>Review Applications</a>
-                            <a href="jobs.php" class="btn btn-outline-primary"><i class="bi bi-briefcase me-2"></i>Manage Jobs</a>
-                            <a href="appointments.php" class="btn btn-outline-primary"><i class="bi bi-calendar me-2"></i>Schedule Appointments</a>
+                            <a href="users.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-people me-2"></i>Manage Users</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="applications.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-file-text me-2"></i>Review Applications</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="companies.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-building me-2"></i>Manage Companies</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="jobs.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-briefcase me-2"></i>Manage Jobs</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="appointments.php" class="btn btn-outline-primary d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-calendar me-2"></i>Schedule Appointments</span>
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card border-0 shadow-sm mt-4">
+                <!-- Recent Users -->
+                <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-transparent py-3">
-                        <h5 class="mb-0">System Info</h5>
+                        <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>New Users</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <ul class="list-group list-group-flush">
+                            <?php foreach ($recentUsers as $user): ?>
+                            <li class="list-group-item d-flex align-items-center">
+                                <div class="avatar-circle bg-success text-white me-3">
+                                    <?= strtoupper(substr($user['first_name'], 0, 1) . substr($user['last_name'], 0, 1)) ?>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <a href="user.php?id=<?= $user['id'] ?>" class="text-decoration-none fw-medium">
+                                        <?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?>
+                                    </a>
+                                    <br><small class="text-muted"><?= htmlspecialchars($user['city'] ?? 'Location not set') ?></small>
+                                </div>
+                                <small class="text-muted"><?= timeAgo($user['created_at']) ?></small>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- System Info -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent py-3">
+                        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>System Info</h5>
                     </div>
                     <div class="card-body">
-                        <p class="mb-2"><strong>App Version:</strong> <?= APP_VERSION ?></p>
-                        <p class="mb-2"><strong>PHP Version:</strong> <?= phpversion() ?></p>
-                        <p class="mb-0"><strong>Server Time:</strong> <?= date('Y-m-d H:i:s') ?></p>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">App Version</span>
+                            <span class="fw-medium"><?= APP_VERSION ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">PHP Version</span>
+                            <span class="fw-medium"><?= phpversion() ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Server Time</span>
+                            <span class="fw-medium"><?= date('Y-m-d H:i') ?></span>
+                        </div>
                     </div>
                 </div>
             </div>

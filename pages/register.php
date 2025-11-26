@@ -1,6 +1,7 @@
 <?php
 /**
  * Registration Page
+ * Professional multi-step registration with skill and interest suggestions
  */
 
 require_once __DIR__ . '/../includes/auth.php';
@@ -11,6 +12,15 @@ if (isLoggedIn()) {
     header('Location: dashboard.php');
     exit;
 }
+
+// Popular interests and skills (will be supplemented with AJAX)
+$popularInterests = ['Technology', 'Healthcare', 'Finance', 'Education', 'Marketing', 
+                     'Sales', 'Engineering', 'Design', 'Data Science', 'Consulting',
+                     'E-commerce', 'Manufacturing', 'Real Estate', 'Media', 'Legal'];
+                     
+$popularSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AWS',
+                  'HTML/CSS', 'TypeScript', 'Git', 'Docker', 'PHP', 'Excel', 'Communication',
+                  'Project Management', 'Leadership', 'Problem Solving', 'Teamwork'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,6 +31,58 @@ if (isLoggedIn()) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="../assets/css/style.css" rel="stylesheet">
+    <style>
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+        }
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            color: #6c757d;
+            transition: all 0.3s;
+        }
+        .step.active .step-circle {
+            background: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        .step.completed .step-circle {
+            background: #198754;
+            border-color: #198754;
+            color: #fff;
+        }
+        .step-line {
+            width: 80px;
+            height: 2px;
+            background: #dee2e6;
+            margin: 0 0.5rem;
+        }
+        .step.completed + .step-line,
+        .step.active ~ .step-line {
+            background: #0d6efd;
+        }
+        .suggestion-badge {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .suggestion-badge:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container py-5">
@@ -33,111 +95,164 @@ if (isLoggedIn()) {
                     </a>
                 </div>
                 
-                <div class="card border-0 shadow-sm">
+                <div class="card border-0 shadow">
                     <div class="card-body p-4 p-md-5">
                         <h4 class="text-center mb-1">Create Your Account</h4>
-                        <p class="text-center text-muted mb-4">Fill in your information to get started</p>
+                        <p class="text-center text-muted mb-4">Join thousands of job seekers finding their dream careers</p>
+                        
+                        <!-- Step Indicator -->
+                        <div class="step-indicator">
+                            <div class="step active" id="step-ind-1">
+                                <div class="step-circle">1</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" id="step-ind-2">
+                                <div class="step-circle">2</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" id="step-ind-3">
+                                <div class="step-circle">3</div>
+                            </div>
+                        </div>
                         
                         <form id="register-form" onsubmit="register(event)">
-                            <!-- Step indicator -->
-                            <div class="progress mb-4" style="height: 4px;">
-                                <div class="progress-bar" id="progress-bar" role="progressbar" style="width: 33%"></div>
-                            </div>
-                            
                             <!-- Step 1: Basic Info -->
                             <div id="step-1">
-                                <h5 class="mb-3"><i class="bi bi-person me-2"></i>Basic Information</h5>
+                                <h5 class="mb-3 text-primary"><i class="bi bi-person me-2"></i>Basic Information</h5>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="first_name" class="form-label">First Name *</label>
-                                        <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                        <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control form-control-lg" id="first_name" name="first_name" required placeholder="John">
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="last_name" class="form-label">Last Name *</label>
-                                        <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                        <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control form-control-lg" id="last_name" name="last_name" required placeholder="Doe">
                                     </div>
                                     <div class="col-12">
-                                        <label for="email" class="form-label">Email Address *</label>
-                                        <input type="email" class="form-control" id="email" name="email" required>
+                                        <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                        <input type="email" class="form-control form-control-lg" id="email" name="email" required placeholder="john.doe@example.com">
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="password" class="form-label">Password *</label>
-                                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                                        <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control form-control-lg" id="password" name="password" required minlength="6">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
                                         <div class="form-text">Minimum 6 characters</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="confirm_password" class="form-label">Confirm Password *</label>
-                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                                        <label for="confirm_password" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                        <input type="password" class="form-control form-control-lg" id="confirm_password" name="confirm_password" required>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="phone" class="form-label">Phone</label>
-                                        <input type="tel" class="form-control" id="phone" name="phone">
+                                        <input type="tel" class="form-control form-control-lg" id="phone" name="phone" placeholder="+1 234 567 8900">
                                     </div>
                                     <div class="col-md-6">
                                         <label for="city" class="form-label">City</label>
-                                        <input type="text" class="form-control" id="city" name="city">
+                                        <input type="text" class="form-control form-control-lg" id="city" name="city" placeholder="New York">
                                     </div>
                                     <div class="col-12">
                                         <label for="country" class="form-label">Country</label>
-                                        <input type="text" class="form-control" id="country" name="country">
+                                        <input type="text" class="form-control form-control-lg" id="country" name="country" placeholder="United States">
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end mt-4">
-                                    <button type="button" class="btn btn-primary" onclick="nextStep(2)">Next <i class="bi bi-arrow-right ms-2"></i></button>
+                                    <button type="button" class="btn btn-primary btn-lg px-4" onclick="nextStep(2)">
+                                        Continue <i class="bi bi-arrow-right ms-2"></i>
+                                    </button>
                                 </div>
                             </div>
                             
                             <!-- Step 2: Skills & Interests -->
                             <div id="step-2" style="display: none;">
-                                <h5 class="mb-3"><i class="bi bi-stars me-2"></i>Skills & Interests</h5>
+                                <h5 class="mb-3 text-primary"><i class="bi bi-stars me-2"></i>Skills & Interests</h5>
+                                
                                 <div class="mb-4">
                                     <label for="bio" class="form-label">About You</label>
-                                    <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="Tell us about yourself, your career goals..."></textarea>
+                                    <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="Tell us about yourself, your career goals, and what you're looking for in your next role..."></textarea>
                                 </div>
+                                
                                 <div class="mb-4">
-                                    <label class="form-label">Skills</label>
+                                    <label class="form-label">Your Skills</label>
                                     <div class="input-group mb-2">
-                                        <input type="text" class="form-control" id="skill-input" placeholder="Add a skill (e.g., JavaScript, Python)">
-                                        <button type="button" class="btn btn-outline-primary" onclick="addSkill()">Add</button>
+                                        <input type="text" class="form-control" id="skill-input" placeholder="Type a skill and press Add">
+                                        <button type="button" class="btn btn-primary" onclick="addSkill()">
+                                            <i class="bi bi-plus-lg me-1"></i>Add
+                                        </button>
                                     </div>
-                                    <div id="skills-list"></div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Popular skills: </small>
+                                        <?php foreach (array_slice($popularSkills, 0, 10) as $skill): ?>
+                                        <span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addSkillFromSuggestion('<?= htmlspecialchars($skill) ?>')"><?= htmlspecialchars($skill) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div id="skills-list" class="mb-2"></div>
                                 </div>
+                                
                                 <div class="mb-4">
-                                    <label class="form-label">Interests (Job Industries)</label>
+                                    <label class="form-label">Industries & Interests</label>
                                     <div class="input-group mb-2">
-                                        <input type="text" class="form-control" id="interest-input" placeholder="Add an interest (e.g., Technology, Healthcare)">
-                                        <button type="button" class="btn btn-outline-secondary" onclick="addInterest()">Add</button>
+                                        <input type="text" class="form-control" id="interest-input" placeholder="Type an interest and press Add">
+                                        <button type="button" class="btn btn-secondary" onclick="addInterest()">
+                                            <i class="bi bi-plus-lg me-1"></i>Add
+                                        </button>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Most popular: </small>
+                                        <?php foreach ($popularInterests as $interest): ?>
+                                        <span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addInterestFromSuggestion('<?= htmlspecialchars($interest) ?>')"><?= htmlspecialchars($interest) ?></span>
+                                        <?php endforeach; ?>
                                     </div>
                                     <div id="interests-list"></div>
                                 </div>
+                                
                                 <div class="d-flex justify-content-between mt-4">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="prevStep(1)"><i class="bi bi-arrow-left me-2"></i>Back</button>
-                                    <button type="button" class="btn btn-primary" onclick="nextStep(3)">Next <i class="bi bi-arrow-right ms-2"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="prevStep(1)">
+                                        <i class="bi bi-arrow-left me-2"></i>Back
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-lg px-4" onclick="nextStep(3)">
+                                        Continue <i class="bi bi-arrow-right ms-2"></i>
+                                    </button>
                                 </div>
                             </div>
                             
                             <!-- Step 3: Experience -->
                             <div id="step-3" style="display: none;">
-                                <h5 class="mb-3"><i class="bi bi-briefcase me-2"></i>Experience</h5>
+                                <h5 class="mb-3 text-primary"><i class="bi bi-briefcase me-2"></i>Work Experience</h5>
                                 <div id="experience-container">
-                                    <p class="text-muted">You can add your work experience now or later from your profile.</p>
+                                    <div class="text-center py-4 border rounded mb-3 bg-light">
+                                        <i class="bi bi-briefcase text-muted" style="font-size: 2rem;"></i>
+                                        <p class="text-muted mt-2 mb-0">Add your work experience to improve job matching</p>
+                                    </div>
                                 </div>
                                 <button type="button" class="btn btn-outline-primary mb-4" onclick="addExperience()">
-                                    <i class="bi bi-plus me-2"></i>Add Experience
+                                    <i class="bi bi-plus-lg me-2"></i>Add Work Experience
                                 </button>
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle me-2"></i>
-                                    You can also upload your CV after registration for a more complete profile.
+                                
+                                <div class="alert alert-info d-flex align-items-center">
+                                    <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                                    <div>
+                                        <strong>Pro tip:</strong> You can also upload your CV after registration for a more complete profile and better job recommendations.
+                                    </div>
                                 </div>
+                                
                                 <div class="d-flex justify-content-between mt-4">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="prevStep(2)"><i class="bi bi-arrow-left me-2"></i>Back</button>
-                                    <button type="submit" class="btn btn-primary px-4">Create Account</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="prevStep(2)">
+                                        <i class="bi bi-arrow-left me-2"></i>Back
+                                    </button>
+                                    <button type="submit" class="btn btn-success btn-lg px-5">
+                                        <i class="bi bi-check-lg me-2"></i>Create Account
+                                    </button>
                                 </div>
                             </div>
                         </form>
                         
-                        <p class="text-center mt-4 mb-0">
-                            Already have an account? <a href="login.php">Sign in</a>
+                        <hr class="my-4">
+                        <p class="text-center mb-0">
+                            Already have an account? <a href="login.php" class="fw-medium">Sign in</a>
                         </p>
                     </div>
                 </div>
@@ -151,11 +266,46 @@ if (isLoggedIn()) {
         let currentStep = 1;
         let experienceCount = 0;
         
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        
+        function updateStepIndicator() {
+            for (let i = 1; i <= 3; i++) {
+                const stepEl = document.getElementById('step-ind-' + i);
+                stepEl.classList.remove('active', 'completed');
+                if (i < currentStep) {
+                    stepEl.classList.add('completed');
+                    stepEl.querySelector('.step-circle').innerHTML = '<i class="bi bi-check"></i>';
+                } else if (i === currentStep) {
+                    stepEl.classList.add('active');
+                    stepEl.querySelector('.step-circle').textContent = i;
+                } else {
+                    stepEl.querySelector('.step-circle').textContent = i;
+                }
+            }
+        }
+        
         function nextStep(step) {
             // Validate current step
             if (currentStep === 1) {
+                const firstName = document.getElementById('first_name').value;
+                const lastName = document.getElementById('last_name').value;
+                const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 const confirmPassword = document.getElementById('confirm_password').value;
+                
+                if (!firstName || !lastName || !email) {
+                    showToast('Please fill in all required fields', 'danger');
+                    return;
+                }
+                
+                if (!email.includes('@')) {
+                    showToast('Please enter a valid email address', 'danger');
+                    return;
+                }
+                
                 if (password !== confirmPassword) {
                     showToast('Passwords do not match', 'danger');
                     return;
@@ -168,28 +318,67 @@ if (isLoggedIn()) {
             
             document.getElementById('step-' + currentStep).style.display = 'none';
             document.getElementById('step-' + step).style.display = 'block';
-            document.getElementById('progress-bar').style.width = (step * 33) + '%';
             currentStep = step;
+            updateStepIndicator();
         }
         
         function prevStep(step) {
             document.getElementById('step-' + currentStep).style.display = 'none';
             document.getElementById('step-' + step).style.display = 'block';
-            document.getElementById('progress-bar').style.width = (step * 33) + '%';
             currentStep = step;
+            updateStepIndicator();
+        }
+        
+        function addSkillFromSuggestion(skill) {
+            addSkillToList(skill);
+        }
+        
+        function addSkillToList(skill) {
+            const list = document.getElementById('skills-list');
+            // Check if already exists
+            if (list.querySelector(`[data-skill="${skill}"]`)) return;
+            
+            const tag = document.createElement('span');
+            tag.className = 'skill-tag badge bg-primary me-2 mb-2';
+            tag.setAttribute('data-skill', skill);
+            tag.innerHTML = `${escapeHtml(skill)} <span style="cursor: pointer" onclick="this.parentElement.remove()">×</span>`;
+            list.appendChild(tag);
+        }
+        
+        function addInterestFromSuggestion(interest) {
+            addInterestToList(interest);
+        }
+        
+        function addInterestToList(interest) {
+            const list = document.getElementById('interests-list');
+            // Check if already exists
+            if (list.querySelector(`[data-interest="${interest}"]`)) return;
+            
+            const tag = document.createElement('span');
+            tag.className = 'skill-tag badge bg-secondary me-2 mb-2';
+            tag.setAttribute('data-interest', interest);
+            tag.innerHTML = `${escapeHtml(interest)} <span style="cursor: pointer" onclick="this.parentElement.remove()">×</span>`;
+            list.appendChild(tag);
         }
         
         function addExperience() {
             experienceCount++;
             const container = document.getElementById('experience-container');
+            
+            // Remove placeholder if exists
+            const placeholder = container.querySelector('.text-center.py-4');
+            if (placeholder) placeholder.remove();
+            
             const div = document.createElement('div');
             div.className = 'card mb-3';
             div.id = 'experience-' + experienceCount;
             div.innerHTML = `
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="mb-0">Experience ${experienceCount}</h6>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExperience(${experienceCount})">Remove</button>
+                        <h6 class="mb-0 text-primary"><i class="bi bi-briefcase me-2"></i>Experience ${experienceCount}</h6>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeExperience(${experienceCount})">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -215,7 +404,6 @@ if (isLoggedIn()) {
                     </div>
                 </div>
             `;
-            container.querySelector('p')?.remove();
             container.appendChild(div);
         }
         
@@ -235,14 +423,14 @@ if (isLoggedIn()) {
             // Collect skills
             const skills = [];
             document.querySelectorAll('#skills-list .skill-tag').forEach(tag => {
-                skills.push(tag.textContent.replace('×', '').trim());
+                skills.push(tag.getAttribute('data-skill'));
             });
             formData.append('skills', JSON.stringify(skills));
             
             // Collect interests
             const interests = [];
             document.querySelectorAll('#interests-list .skill-tag').forEach(tag => {
-                interests.push(tag.textContent.replace('×', '').trim());
+                interests.push(tag.getAttribute('data-interest'));
             });
             formData.append('interests', JSON.stringify(interests));
             
@@ -286,7 +474,7 @@ if (isLoggedIn()) {
                 }, 1000);
             } else {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Create Account';
+                submitBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Create Account';
             }
         };
     </script>
