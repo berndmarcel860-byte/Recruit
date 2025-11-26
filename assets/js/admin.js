@@ -3,7 +3,11 @@
  * Handles admin operations via AJAX
  */
 
-// Use BASE_PATH from app.js - it's already loaded before admin.js
+// Ensure app.js is loaded before this file
+if (typeof BASE_PATH === 'undefined') {
+    throw new Error('app.js must be loaded before admin.js');
+}
+
 const ADMIN_API = BASE_PATH + 'api/admin.php';
 const JOBS_API = BASE_PATH + 'api/jobs.php';
 

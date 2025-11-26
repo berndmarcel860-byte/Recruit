@@ -6,17 +6,34 @@
 // API Base URL - Calculate base path dynamically
 const getBasePath = () => {
     const path = window.location.pathname;
-    // Find the base directory by looking for known subdirectories
+    // Find the base directory by looking for the last occurrence of known subdirectories
     const subdirs = ['/pages/', '/admin/'];
+    let latestIdx = -1;
     for (const subdir of subdirs) {
-        const idx = path.indexOf(subdir);
-        if (idx !== -1) {
-            return path.substring(0, idx) + '/';
+        const idx = path.lastIndexOf(subdir);
+        if (idx > latestIdx) {
+            latestIdx = idx;
         }
+    }
+    if (latestIdx !== -1) {
+        return path.substring(0, latestIdx) + '/';
     }
     // If at root level, use current directory
     const lastSlash = path.lastIndexOf('/');
     return path.substring(0, lastSlash + 1);
+};
+
+/**
+ * Build API URL from endpoint
+ * @param {string} endpoint - The API endpoint
+ * @returns {string} - Full URL for the API request
+ */
+const buildApiUrl = (endpoint) => {
+    // Return as-is if endpoint is absolute URL, starts with /, or already has base path
+    if (endpoint.startsWith('http') || endpoint.startsWith('/') || endpoint.startsWith(BASE_PATH)) {
+        return endpoint;
+    }
+    return API_URL + endpoint;
 };
 
 const BASE_PATH = getBasePath();
@@ -78,10 +95,7 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     }
     
     try {
-        // Only prepend API_URL if endpoint doesn't already start with the base path or is not an absolute URL
-        const url = endpoint.startsWith('http') || endpoint.startsWith('/') || endpoint.startsWith(BASE_PATH) 
-            ? endpoint 
-            : API_URL + endpoint;
+        const url = buildApiUrl(endpoint);
         const response = await fetch(url, options);
         const result = await response.json();
         
