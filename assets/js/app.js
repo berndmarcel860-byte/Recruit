@@ -3,8 +3,24 @@
  * Handles AJAX calls and UI interactions
  */
 
-// API Base URL
-const API_URL = 'api/';
+// API Base URL - Calculate base path dynamically
+const getBasePath = () => {
+    const path = window.location.pathname;
+    // Find the base directory by looking for known subdirectories
+    const subdirs = ['/pages/', '/admin/'];
+    for (const subdir of subdirs) {
+        const idx = path.indexOf(subdir);
+        if (idx !== -1) {
+            return path.substring(0, idx) + '/';
+        }
+    }
+    // If at root level, use current directory
+    const lastSlash = path.lastIndexOf('/');
+    return path.substring(0, lastSlash + 1);
+};
+
+const BASE_PATH = getBasePath();
+const API_URL = BASE_PATH + 'api/';
 
 // Toast notification container
 let toastContainer;
@@ -62,7 +78,11 @@ async function apiRequest(endpoint, method = 'GET', data = null) {
     }
     
     try {
-        const response = await fetch(API_URL + endpoint, options);
+        // Only prepend API_URL if endpoint doesn't already start with the base path or is not an absolute URL
+        const url = endpoint.startsWith('http') || endpoint.startsWith('/') || endpoint.startsWith(BASE_PATH) 
+            ? endpoint 
+            : API_URL + endpoint;
+        const response = await fetch(url, options);
         const result = await response.json();
         
         if (!result.success && result.message) {

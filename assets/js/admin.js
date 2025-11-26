@@ -3,7 +3,9 @@
  * Handles admin operations via AJAX
  */
 
-const ADMIN_API = '../api/admin.php';
+// Use BASE_PATH from app.js - it's already loaded before admin.js
+const ADMIN_API = BASE_PATH + 'api/admin.php';
+const JOBS_API = BASE_PATH + 'api/jobs.php';
 
 /**
  * Load dashboard data
@@ -301,7 +303,7 @@ async function loadAdminJobs(page = 1) {
     
     container.innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr>';
     
-    const result = await apiRequest('../api/jobs.php?' + params.toString());
+    const result = await apiRequest(JOBS_API + '?' + params.toString());
     
     if (result.success) {
         if (result.jobs.length === 0) {
