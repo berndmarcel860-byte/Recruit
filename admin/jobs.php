@@ -368,6 +368,15 @@ $companies = $db->fetchAll("SELECT id, name FROM companies WHERE is_active = 1 O
     <script src="../assets/js/app.js"></script>
     <script src="../assets/js/admin.js"></script>
     <script>
+        // Fallback in case app.js hasn't loaded yet
+        if (typeof escapeHtml === 'undefined') {
+            window.escapeHtml = function(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+        }
+        
         document.addEventListener('DOMContentLoaded', loadAdminJobs);
         
         function resetJobFilters() {

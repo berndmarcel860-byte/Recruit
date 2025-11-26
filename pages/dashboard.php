@@ -7,6 +7,20 @@
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/functions.php';
 
+/**
+ * Calculate profile completion percentage
+ */
+function calculateProfileCompletion($user) {
+    $fields = ['first_name', 'last_name', 'email', 'phone', 'city', 'country', 'bio', 'skills', 'interests'];
+    $filled = 0;
+    foreach ($fields as $field) {
+        if (!empty($user[$field])) {
+            $filled++;
+        }
+    }
+    return round(($filled / count($fields)) * 100);
+}
+
 requireAuth();
 
 $user = getCurrentUser();
@@ -39,17 +53,6 @@ $upcomingAppointments = $db->fetchAll(
 
 // Skills
 $userSkills = json_decode($user['skills'] ?? '[]', true);
-
-function calculateProfileCompletion($user) {
-    $fields = ['first_name', 'last_name', 'email', 'phone', 'city', 'country', 'bio', 'skills', 'interests'];
-    $filled = 0;
-    foreach ($fields as $field) {
-        if (!empty($user[$field])) {
-            $filled++;
-        }
-    }
-    return round(($filled / count($fields)) * 100);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

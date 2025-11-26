@@ -263,6 +263,15 @@ $popularSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AW
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="../assets/js/app.js"></script>
     <script>
+        // Fallback in case app.js hasn't loaded yet
+        if (typeof escapeHtml === 'undefined') {
+            window.escapeHtml = function(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            };
+        }
+        
         let currentStep = 1;
         let experienceCount = 0;
         
