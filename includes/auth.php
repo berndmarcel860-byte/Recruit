@@ -27,10 +27,19 @@ function registerUser($data) {
     // Hash password
     $data['password'] = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => HASH_COST]);
     
+    // Store skills and interests before JSON encoding for usage tracking
+    $userSkills = [];
+    $userInterests = [];
+    
     // Process JSON fields
     $jsonFields = ['skills', 'interests', 'experience', 'education'];
     foreach ($jsonFields as $field) {
         if (isset($data[$field]) && is_array($data[$field])) {
+            if ($field === 'skills') {
+                $userSkills = $data[$field];
+            } elseif ($field === 'interests') {
+                $userInterests = $data[$field];
+            }
             $data[$field] = json_encode($data[$field]);
         } elseif (!isset($data[$field])) {
             $data[$field] = '[]';
@@ -45,6 +54,22 @@ function registerUser($data) {
     try {
         $userId = $db->insert('users', $data);
         $user = getUserById($userId);
+        
+        // Increment usage counts for skills
+        foreach ($userSkills as $skill) {
+            $db->query(
+                "UPDATE system_skills SET usage_count = usage_count + 1 WHERE name = :name",
+                ['name' => $skill]
+            );
+        }
+        
+        // Increment usage counts for interests
+        foreach ($userInterests as $interest) {
+            $db->query(
+                "UPDATE system_interests SET usage_count = usage_count + 1 WHERE name = :name",
+                ['name' => $interest]
+            );
+        }
         
         // Create welcome notification
         $db->insert('notifications', [
