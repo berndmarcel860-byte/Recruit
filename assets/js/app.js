@@ -652,3 +652,30 @@ function getStatusBadgeClass(status) {
     };
     return classes[status] || 'bg-secondary';
 }
+
+/**
+ * Format time ago (similar to PHP timeAgo function)
+ */
+function timeAgo(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - date) / 1000);
+    
+    if (diff < 60) {
+        return 'Just now';
+    } else if (diff < 3600) {
+        const mins = Math.floor(diff / 60);
+        return mins + ' minute' + (mins > 1 ? 's' : '') + ' ago';
+    } else if (diff < 86400) {
+        const hours = Math.floor(diff / 3600);
+        return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+    } else if (diff < 604800) {
+        const days = Math.floor(diff / 86400);
+        return days + ' day' + (days > 1 ? 's' : '') + ' ago';
+    } else {
+        return formatDate(dateStr);
+    }
+}
+
+// Global API_BASE for use in inline scripts
+const API_BASE = BASE_PATH;

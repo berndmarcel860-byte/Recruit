@@ -178,16 +178,14 @@ $popularSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AW
                                 <div class="mb-4">
                                     <label class="form-label">Your Skills</label>
                                     <div class="input-group mb-2">
-                                        <input type="text" class="form-control" id="skill-input" placeholder="Type a skill and press Add">
+                                        <input type="text" class="form-control" id="skill-input" placeholder="Type a skill and press Add (or select from suggestions)">
                                         <button type="button" class="btn btn-primary" onclick="addSkill()">
-                                            <i class="bi bi-plus-lg me-1"></i>Add
+                                            <i class="bi bi-plus-lg me-1"></i>Add Custom
                                         </button>
                                     </div>
-                                    <div class="mb-2">
+                                    <div class="mb-2" id="skill-suggestions-container">
                                         <small class="text-muted">Popular skills: </small>
-                                        <?php foreach (array_slice($popularSkills, 0, 10) as $skill): ?>
-                                        <span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addSkillFromSuggestion('<?= htmlspecialchars($skill) ?>')"><?= htmlspecialchars($skill) ?></span>
-                                        <?php endforeach; ?>
+                                        <span id="skill-suggestions">Loading...</span>
                                     </div>
                                     <div id="skills-list" class="mb-2"></div>
                                 </div>
@@ -195,16 +193,14 @@ $popularSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AW
                                 <div class="mb-4">
                                     <label class="form-label">Industries & Interests</label>
                                     <div class="input-group mb-2">
-                                        <input type="text" class="form-control" id="interest-input" placeholder="Type an interest and press Add">
+                                        <input type="text" class="form-control" id="interest-input" placeholder="Type an interest and press Add (or select from suggestions)">
                                         <button type="button" class="btn btn-secondary" onclick="addInterest()">
-                                            <i class="bi bi-plus-lg me-1"></i>Add
+                                            <i class="bi bi-plus-lg me-1"></i>Add Custom
                                         </button>
                                     </div>
-                                    <div class="mb-2">
+                                    <div class="mb-2" id="interest-suggestions-container">
                                         <small class="text-muted">Most popular: </small>
-                                        <?php foreach ($popularInterests as $interest): ?>
-                                        <span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addInterestFromSuggestion('<?= htmlspecialchars($interest) ?>')"><?= htmlspecialchars($interest) ?></span>
-                                        <?php endforeach; ?>
+                                        <span id="interest-suggestions">Loading...</span>
                                     </div>
                                     <div id="interests-list"></div>
                                 </div>
@@ -274,6 +270,54 @@ $popularSkills = ['JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL', 'AW
         
         let currentStep = 1;
         let experienceCount = 0;
+        let systemSkills = [];
+        let systemInterests = [];
+        
+        // Load skills and interests from API on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSystemSkills();
+            loadSystemInterests();
+        });
+        
+        async function loadSystemSkills() {
+            try {
+                const result = await fetch('../api/auth.php?action=get_system_skills').then(r => r.json());
+                if (result.success) {
+                    systemSkills = result.skills;
+                    renderSkillSuggestions();
+                }
+            } catch (e) {
+                console.error('Failed to load skills');
+            }
+        }
+        
+        async function loadSystemInterests() {
+            try {
+                const result = await fetch('../api/auth.php?action=get_system_interests').then(r => r.json());
+                if (result.success) {
+                    systemInterests = result.interests;
+                    renderInterestSuggestions();
+                }
+            } catch (e) {
+                console.error('Failed to load interests');
+            }
+        }
+        
+        function renderSkillSuggestions() {
+            const container = document.getElementById('skill-suggestions');
+            const topSkills = systemSkills.slice(0, 15);
+            container.innerHTML = topSkills.map(skill => 
+                `<span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addSkillFromSuggestion('${escapeHtml(skill.name)}')">${escapeHtml(skill.name)}</span>`
+            ).join('');
+        }
+        
+        function renderInterestSuggestions() {
+            const container = document.getElementById('interest-suggestions');
+            const topInterests = systemInterests.slice(0, 15);
+            container.innerHTML = topInterests.map(interest => 
+                `<span class="badge bg-light text-dark suggestion-badge me-1 mb-1" onclick="addInterestFromSuggestion('${escapeHtml(interest.name)}')">${interest.icon ? `<i class="bi bi-${escapeHtml(interest.icon)} me-1"></i>` : ''}${escapeHtml(interest.name)}</span>`
+            ).join('');
+        }
         
         function togglePassword(id) {
             const input = document.getElementById(id);

@@ -49,6 +49,7 @@ switch ($action) {
         // Create the appointment
         $scheduledAt = $slot['slot_date'] . ' ' . $slot['start_time'];
         $duration = (strtotime($slot['end_time']) - strtotime($slot['start_time'])) / 60;
+        $meetingLink = generateMeetingLink('onboard_' . generateToken(8));
         
         $appointmentId = $db->insert('appointments', [
             'user_id' => $userId,
@@ -58,8 +59,8 @@ switch ($action) {
             'description' => 'Welcome call to discuss your career goals and how we can help you find the perfect job.',
             'scheduled_at' => $scheduledAt,
             'duration' => $duration,
-            'location' => 'Virtual',
-            'meeting_link' => MEETING_URL_BASE . '/onboarding/' . generateToken(8),
+            'location' => getMeetingProviderName() . ' Meeting',
+            'meeting_link' => $meetingLink,
             'status' => 'scheduled',
             'booked_by_user' => 1
         ]);
@@ -79,12 +80,22 @@ switch ($action) {
             $userId,
             'onboarding',
             'Onboarding Scheduled',
-            'Your onboarding call has been scheduled for ' . formatDate($scheduledAt, 'M d, Y at g:i A') . '.',
+            'Your onboarding call has been scheduled for ' . formatDate($scheduledAt, 'M d, Y at g:i A') . '. Join via ' . getMeetingProviderName() . '.',
             'pages/onboarding.php',
             'normal',
             $appointmentId,
             'appointment'
         );
+        
+        // Send email with meeting link
+        $user = getUserById($userId);
+        sendTemplatedEmail('onboarding_scheduled', $userId, [
+            'appointment_date' => formatDate($scheduledAt, 'l, F j, Y'),
+            'appointment_time' => formatDate($scheduledAt, 'g:i A'),
+            'duration' => $duration,
+            'meeting_link' => $meetingLink,
+            'meeting_provider' => getMeetingProviderName()
+        ]);
         
         // Also notify admin
         createNotification(
@@ -264,6 +275,7 @@ switch ($action) {
         // Create interview appointment
         $scheduledAt = $slot['slot_date'] . ' ' . $slot['start_time'];
         $duration = (strtotime($slot['end_time']) - strtotime($slot['start_time'])) / 60;
+        $meetingLink = generateMeetingLink('interview_' . generateToken(8));
         
         $appointmentId = $db->insert('appointments', [
             'user_id' => $_SESSION['user_id'],
@@ -274,8 +286,8 @@ switch ($action) {
             'description' => 'Job interview for ' . $application['job_title'] . ' at ' . $application['company_name'],
             'scheduled_at' => $scheduledAt,
             'duration' => $duration,
-            'location' => 'Virtual',
-            'meeting_link' => MEETING_URL_BASE . '/interview/' . generateToken(8),
+            'location' => getMeetingProviderName() . ' Meeting',
+            'meeting_link' => $meetingLink,
             'status' => 'scheduled',
             'booked_by_user' => 1
         ]);
@@ -298,12 +310,23 @@ switch ($action) {
             $_SESSION['user_id'],
             'interview',
             'Interview Scheduled',
-            'Your interview for ' . $application['job_title'] . ' is scheduled for ' . formatDate($scheduledAt, 'M d at g:i A') . '.',
+            'Your interview for ' . $application['job_title'] . ' is scheduled for ' . formatDate($scheduledAt, 'M d at g:i A') . '. Join via ' . getMeetingProviderName() . '.',
             'pages/applications.php',
             'high',
             $applicationId,
             'application'
         );
+        
+        // Send email with meeting link
+        sendTemplatedEmail('interview_scheduled', $_SESSION['user_id'], [
+            'job_title' => $application['job_title'],
+            'company_name' => $application['company_name'],
+            'appointment_date' => formatDate($scheduledAt, 'l, F j, Y'),
+            'appointment_time' => formatDate($scheduledAt, 'g:i A'),
+            'duration' => $duration,
+            'meeting_type' => getMeetingProviderName(),
+            'meeting_link' => $meetingLink
+        ]);
         
         logActivity($_SESSION['user_id'], 'book_interview', 'appointment', $appointmentId);
         

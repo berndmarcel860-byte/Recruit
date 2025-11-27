@@ -1,6 +1,6 @@
 # Recruit - Professional Job Recruitment Platform
 
-A complete, professional job recruitment web application with comprehensive workflow management, built with PHP, MySQL, Bootstrap 5, and AJAX.
+A complete, professional job recruitment web application with comprehensive workflow management, messaging, email notifications, and video meeting integration. Built with PHP, MySQL, Bootstrap 5, and AJAX.
 
 ## Key Features
 
@@ -9,24 +9,56 @@ A complete, professional job recruitment web application with comprehensive work
 The platform implements a complete recruitment workflow:
 
 1. **User Registration** → Account status: `pending_onboarding`
-2. **Onboarding Scheduling** → User books an onboarding call
+2. **Onboarding Scheduling** → User books an onboarding call (via Zoom/Teams/Google Meet)
 3. **Onboarding Completion** → Admin/moderator activates account
 4. **Job Application** → User applies or receives AI recommendations
 5. **Application Review** → Moderator accepts/rejects
-6. **Interview Scheduling** → Accepted candidates schedule interviews
+6. **Interview Scheduling** → Accepted candidates schedule video interviews
 7. **Hiring Decision** → Final offer or rejection
+
+### 📹 Video Meeting Integration
+
+- **Zoom** - Default meeting provider
+- **Microsoft Teams** - Full support
+- **Google Meet** - Full support
+- Automatic meeting link generation for onboarding and interviews
+- Configurable default provider in admin settings
+
+### 💬 In-App Messaging System
+
+- Real-time messaging between users and admin/moderators
+- Conversation threads with history
+- Priority levels (low, normal, high, urgent)
+- Unread message indicators
+- Message notifications
+
+### 📧 Email Notification System
+
+- **Templated Emails** - Pre-defined templates for all workflow stages
+- **Automatic Sending** - Emails sent at key workflow moments
+- **Meeting Links** - Zoom/Teams links included in emails
+- **Templates Include**:
+  - Onboarding scheduled (with meeting link)
+  - Interview invitation
+  - Interview scheduled (with meeting link)
+  - Job offer
+  - Application rejection
+  - Welcome/activation email
+  - AI job recommendations
 
 ### 👤 For Job Seekers (Users)
 
 - **Multi-step Registration**
   - Personal information with validation
-  - Skills selection with popular suggestions
-  - Interests/industry preferences
+  - Skills selection from admin-managed system skills
+  - Custom skill addition
+  - Interests/industry preferences from system list
   - Work experience history
   - CV/Resume upload
 
 - **Onboarding Process**
   - Schedule onboarding call from available slots
+  - Receive Zoom/Teams meeting link via email
   - Meet with recruiter to discuss goals
   - Account activation after successful onboarding
 
@@ -39,6 +71,7 @@ The platform implements a complete recruitment workflow:
   - Smart job matching based on skills and experience
   - Match score calculation (0-100%)
   - Personalized job suggestions
+  - Email notifications for high-match jobs
 
 - **Application Tracking**
   - Real-time status updates
@@ -46,18 +79,24 @@ The platform implements a complete recruitment workflow:
   - In-app notifications
   - Email notifications
 
+- **Messaging**
+  - Message recruitment team directly
+  - Receive responses in-app
+  - Conversation history
+
 - **Dashboard**
   - Profile completion tracking
   - Application statistics
-  - Upcoming appointments
+  - Upcoming appointments with meeting links
   - Quick actions
+  - Notification center
 
 ### 👨‍💼 For Administrators & Moderators
 
 - **Dashboard Overview**
   - Workflow alerts (pending onboarding, applications, interviews)
   - Key metrics and statistics
-  - Today's appointments
+  - Today's appointments with quick actions
   - Recent activity
 
 - **User Management**
@@ -65,15 +104,17 @@ The platform implements a complete recruitment workflow:
   - Complete onboarding calls (pass/fail)
   - Activate/suspend/reject accounts
   - User profile details and history
+  - Send messages to users
 
 - **Application Review**
-  - Accept applications → Send interview invitations
-  - Reject applications → Notify candidates
+  - Accept applications → Send interview invitations with meeting links
+  - Reject applications → Notify candidates via email
   - Add notes and feedback
   - Track application pipeline
 
 - **Interview Management**
   - Schedule interviews with available slots
+  - Automatic Zoom/Teams link generation
   - Complete interviews with outcomes
   - Make job offers
   - Track hiring funnel
@@ -87,12 +128,20 @@ The platform implements a complete recruitment workflow:
   - Create available time slots
   - Schedule onboarding calls
   - Schedule interviews
+  - Automatic meeting link generation
   - Track appointment outcomes
 
+- **Settings & Configuration**
+  - **Skills Management** - Add/edit/delete system skills
+  - **Interests Management** - Add/edit/delete system interests with icons
+  - **Email Templates** - View and configure email templates
+  - **Meeting Settings** - Configure Zoom/Teams/Google Meet integration
+
 - **Communication**
-  - In-app notifications
-  - Email communications
+  - In-app messaging with all users
+  - Email communications via templates
   - Automated notifications for workflow events
+  - Message priority system
 
 ## Technology Stack
 
@@ -101,6 +150,7 @@ The platform implements a complete recruitment workflow:
 - **Frontend**: Bootstrap 5.3 (latest)
 - **JavaScript**: Vanilla JS with AJAX
 - **Icons**: Bootstrap Icons
+- **Video Meetings**: Zoom, Microsoft Teams, Google Meet
 
 ## Installation
 
@@ -138,17 +188,37 @@ The platform implements a complete recruitment workflow:
    define('DB_PASS', 'your_password');
    ```
 
-5. **Set up uploads directory permissions**
+5. **Configure meeting provider (optional)**
+   
+   Edit `includes/config.php`:
+   ```php
+   define('MEETING_PROVIDER', 'zoom'); // Options: zoom, teams, google_meet
+   define('ZOOM_BASE_URL', 'https://zoom.us/j/');
+   define('TEAMS_BASE_URL', 'https://teams.microsoft.com/l/meetup-join/');
+   define('GOOGLE_MEET_BASE_URL', 'https://meet.google.com/');
+   ```
+
+6. **Configure email settings (optional)**
+   
+   Edit `includes/config.php`:
+   ```php
+   define('SMTP_HOST', 'smtp.your-provider.com');
+   define('SMTP_PORT', 587);
+   define('SMTP_USER', 'your_email@example.com');
+   define('SMTP_PASS', 'your_password');
+   ```
+
+7. **Set up uploads directory permissions**
    ```bash
    mkdir -p assets/uploads/cv
    chmod 755 assets/uploads/cv
    ```
 
-6. **Configure your web server**
+8. **Configure your web server**
    
    Point your web server document root to the project directory.
 
-7. **Access the application**
+9. **Access the application**
    
    Open your configured URL in your browser.
 
@@ -190,12 +260,14 @@ recruit/
 │   ├── applications.php   # Application review
 │   ├── companies.php      # Company management
 │   ├── jobs.php           # Job management
-│   └── appointments.php   # Appointment management
+│   ├── appointments.php   # Appointment management
+│   └── settings.php       # Skills, interests & email templates
 ├── api/                    # API endpoints (AJAX)
-│   ├── auth.php           # Authentication
+│   ├── auth.php           # Authentication & notifications
 │   ├── jobs.php           # Jobs operations
 │   ├── companies.php      # Companies operations
 │   ├── appointments.php   # Appointment booking
+│   ├── messages.php       # Messaging system
 │   └── admin.php          # Admin/moderator operations
 ├── assets/
 │   ├── css/style.css      # Custom styles
@@ -206,11 +278,11 @@ recruit/
 │   ├── schema.sql         # Database structure
 │   └── seed.sql           # Dummy data
 ├── includes/
-│   ├── config.php         # Configuration
+│   ├── config.php         # Configuration (DB, email, meetings)
 │   ├── database.php       # Database connection
 │   ├── auth.php           # Authentication & authorization
-│   ├── functions.php      # Helper functions
-│   ├── navbar.php         # Navigation component
+│   ├── functions.php      # Helper functions (email, messaging, etc.)
+│   ├── navbar.php         # Navigation with notifications
 │   └── footer.php         # Footer component
 ├── pages/                  # User-facing pages
 │   ├── login.php          # Login page
@@ -223,7 +295,8 @@ recruit/
 │   ├── companies.php      # Company listings
 │   ├── company.php        # Company details
 │   ├── recommendations.php # AI recommendations
-│   └── applications.php   # User applications
+│   ├── applications.php   # User applications
+│   └── messages.php       # Messaging interface
 ├── index.php               # Homepage
 └── README.md
 ```
@@ -239,6 +312,11 @@ recruit/
 - **notifications** - In-app notifications
 - **available_slots** - Available time slots for scheduling
 - **emails** - Email communication logs
+- **messages** - In-app messaging between users
+- **system_skills** - Admin-managed skills list
+- **system_interests** - Admin-managed interests list
+- **email_templates** - Reusable email templates
+- **meeting_settings** - Video meeting provider configuration
 - **password_resets** - Password reset tokens
 - **activity_log** - User activity audit
 
@@ -273,6 +351,11 @@ The seed file includes:
 - Sample applications in various stages
 - Sample appointments
 - Available time slots for onboarding
+- 70+ System skills across categories
+- 30+ System interests
+- 7 Email templates
+- 3 Meeting provider configurations
+- Sample messages
 
 ### Companies Included
 - TechCorp Solutions (Technology)

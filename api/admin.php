@@ -1095,6 +1095,255 @@ switch ($action) {
         jsonResponse(['success' => true, 'message' => 'Notifications marked as read']);
         break;
         
+    // =====================================================
+    // SKILLS MANAGEMENT
+    // =====================================================
+    
+    case 'get_system_skills':
+        $category = sanitize($_GET['category'] ?? '');
+        
+        $where = "is_active = 1";
+        $params = [];
+        
+        if ($category) {
+            $where .= " AND category = :category";
+            $params['category'] = $category;
+        }
+        
+        $skills = $db->fetchAll(
+            "SELECT * FROM system_skills WHERE $where ORDER BY category, usage_count DESC, name",
+            $params
+        );
+        
+        jsonResponse(['success' => true, 'skills' => $skills]);
+        break;
+        
+    case 'add_skill':
+        if (!isAdmin()) {
+            jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        
+        $name = sanitize($_POST['name'] ?? '');
+        $category = sanitize($_POST['category'] ?? '');
+        
+        if (!$name || !$category) {
+            jsonResponse(['success' => false, 'message' => 'Name and category are required'], 400);
+        }
+        
+        // Check if exists
+        $existing = $db->fetch("SELECT id FROM system_skills WHERE name = :name", ['name' => $name]);
+        if ($existing) {
+            jsonResponse(['success' => false, 'message' => 'Skill already exists'], 400);
+        }
+        
+        $skillId = $db->insert('system_skills', [
+            'name' => $name,
+            'category' => $category,
+            'created_by' => $_SESSION['user_id']
+        ]);
+        
+        logActivity($_SESSION['user_id'], 'add_skill', 'skill', $skillId, ['name' => $name]);
+        
+        jsonResponse(['success' => true, 'message' => 'Skill added successfully', 'skill_id' => $skillId]);
+        break;
+        
+    case 'delete_skill':
+        if (!isAdmin()) {
+            jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        
+        $id = (int)($_POST['id'] ?? 0);
+        
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Skill ID required'], 400);
+        }
+        
+        $db->update('system_skills', ['is_active' => 0], 'id = :id', ['id' => $id]);
+        logActivity($_SESSION['user_id'], 'delete_skill', 'skill', $id);
+        
+        jsonResponse(['success' => true, 'message' => 'Skill deleted']);
+        break;
+        
+    // =====================================================
+    // INTERESTS MANAGEMENT
+    // =====================================================
+    
+    case 'get_system_interests':
+        $category = sanitize($_GET['category'] ?? '');
+        
+        $where = "is_active = 1";
+        $params = [];
+        
+        if ($category) {
+            $where .= " AND category = :category";
+            $params['category'] = $category;
+        }
+        
+        $interests = $db->fetchAll(
+            "SELECT * FROM system_interests WHERE $where ORDER BY category, usage_count DESC, name",
+            $params
+        );
+        
+        jsonResponse(['success' => true, 'interests' => $interests]);
+        break;
+        
+    case 'add_interest':
+        if (!isAdmin()) {
+            jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        
+        $name = sanitize($_POST['name'] ?? '');
+        $category = sanitize($_POST['category'] ?? '');
+        $icon = sanitize($_POST['icon'] ?? '');
+        
+        if (!$name || !$category) {
+            jsonResponse(['success' => false, 'message' => 'Name and category are required'], 400);
+        }
+        
+        // Check if exists
+        $existing = $db->fetch("SELECT id FROM system_interests WHERE name = :name", ['name' => $name]);
+        if ($existing) {
+            jsonResponse(['success' => false, 'message' => 'Interest already exists'], 400);
+        }
+        
+        $interestId = $db->insert('system_interests', [
+            'name' => $name,
+            'category' => $category,
+            'icon' => $icon ?: null,
+            'created_by' => $_SESSION['user_id']
+        ]);
+        
+        logActivity($_SESSION['user_id'], 'add_interest', 'interest', $interestId, ['name' => $name]);
+        
+        jsonResponse(['success' => true, 'message' => 'Interest added successfully', 'interest_id' => $interestId]);
+        break;
+        
+    case 'delete_interest':
+        if (!isAdmin()) {
+            jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        
+        $id = (int)($_POST['id'] ?? 0);
+        
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Interest ID required'], 400);
+        }
+        
+        $db->update('system_interests', ['is_active' => 0], 'id = :id', ['id' => $id]);
+        logActivity($_SESSION['user_id'], 'delete_interest', 'interest', $id);
+        
+        jsonResponse(['success' => true, 'message' => 'Interest deleted']);
+        break;
+        
+    // =====================================================
+    // MEETING SETTINGS
+    // =====================================================
+    
+    case 'set_default_meeting_provider':
+        if (!isAdmin()) {
+            jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        
+        $id = (int)($_POST['id'] ?? 0);
+        
+        if (!$id) {
+            jsonResponse(['success' => false, 'message' => 'Provider ID required'], 400);
+        }
+        
+        // Reset all to non-default
+        $db->query("UPDATE meeting_settings SET is_default = 0");
+        
+        // Set selected as default
+        $db->update('meeting_settings', ['is_default' => 1], 'id = :id', ['id' => $id]);
+        
+        logActivity($_SESSION['user_id'], 'change_meeting_provider', 'meeting_settings', $id);
+        
+        jsonResponse(['success' => true, 'message' => 'Default meeting provider updated']);
+        break;
+        
+    // =====================================================
+    // EMAIL TEMPLATES
+    // =====================================================
+    
+    case 'get_email_templates':
+        $templates = $db->fetchAll("SELECT * FROM email_templates WHERE is_active = 1 ORDER BY type, name");
+        jsonResponse(['success' => true, 'templates' => $templates]);
+        break;
+        
+    case 'send_templated_email':
+        $templateName = sanitize($_POST['template'] ?? '');
+        $recipientId = (int)($_POST['recipient_id'] ?? 0);
+        $variables = $_POST['variables'] ?? [];
+        
+        if (!$templateName || !$recipientId) {
+            jsonResponse(['success' => false, 'message' => 'Template and recipient required'], 400);
+        }
+        
+        if (is_string($variables)) {
+            $variables = json_decode($variables, true) ?? [];
+        }
+        
+        $result = sendTemplatedEmail($templateName, $recipientId, $variables, $_SESSION['user_id']);
+        
+        if ($result['success']) {
+            logActivity($_SESSION['user_id'], 'send_templated_email', 'email', $result['email_id'], [
+                'template' => $templateName,
+                'recipient_id' => $recipientId
+            ]);
+        }
+        
+        jsonResponse($result);
+        break;
+        
+    // =====================================================
+    // MESSAGING (Admin view)
+    // =====================================================
+    
+    case 'get_all_messages':
+        $page = (int)($_GET['page'] ?? 1);
+        $limit = min((int)($_GET['limit'] ?? 20), 100);
+        
+        $offset = ($page - 1) * $limit;
+        
+        $messages = $db->fetchAll(
+            "SELECT m.*, 
+                    s.first_name as sender_first_name, s.last_name as sender_last_name,
+                    r.first_name as recipient_first_name, r.last_name as recipient_last_name
+             FROM messages m
+             JOIN users s ON m.sender_id = s.id
+             JOIN users r ON m.recipient_id = r.id
+             ORDER BY m.created_at DESC
+             LIMIT $offset, $limit"
+        );
+        
+        $total = $db->count('messages');
+        
+        jsonResponse([
+            'success' => true, 
+            'messages' => $messages,
+            'pagination' => paginate($total, $limit, $page)
+        ]);
+        break;
+        
+    case 'send_admin_message':
+        $recipientId = (int)($_POST['recipient_id'] ?? 0);
+        $subject = sanitize($_POST['subject'] ?? '');
+        $body = sanitize($_POST['body'] ?? '');
+        $priority = sanitize($_POST['priority'] ?? 'normal');
+        
+        if (!$recipientId || !$body) {
+            jsonResponse(['success' => false, 'message' => 'Recipient and message are required'], 400);
+        }
+        
+        $messageId = sendMessage($_SESSION['user_id'], $recipientId, $subject, $body, null, $priority);
+        
+        logActivity($_SESSION['user_id'], 'send_admin_message', 'message', $messageId, [
+            'recipient_id' => $recipientId
+        ]);
+        
+        jsonResponse(['success' => true, 'message' => 'Message sent', 'message_id' => $messageId]);
+        break;
+        
     default:
         jsonResponse(['success' => false, 'message' => 'Invalid action'], 400);
 }

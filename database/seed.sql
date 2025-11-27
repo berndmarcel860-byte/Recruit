@@ -314,6 +314,300 @@ INSERT INTO notifications (user_id, type, title, message, link, is_read, priorit
 (4, 'application', 'Application Received', 'Your application for Senior Software Engineer has been received and is under review.', 'pages/applications.php', 1, 'normal');
 
 -- =====================================================
+-- Insert System Skills (Admin-managed)
+-- =====================================================
+INSERT INTO system_skills (name, category, is_active, usage_count, created_by) VALUES
+-- Technical Skills - Programming Languages
+('JavaScript', 'Programming Languages', 1, 45, 1),
+('Python', 'Programming Languages', 1, 42, 1),
+('Java', 'Programming Languages', 1, 35, 1),
+('TypeScript', 'Programming Languages', 1, 28, 1),
+('C++', 'Programming Languages', 1, 22, 1),
+('C#', 'Programming Languages', 1, 20, 1),
+('Go', 'Programming Languages', 1, 18, 1),
+('Ruby', 'Programming Languages', 1, 15, 1),
+('PHP', 'Programming Languages', 1, 14, 1),
+('Swift', 'Programming Languages', 1, 12, 1),
+('Kotlin', 'Programming Languages', 1, 10, 1),
+('Rust', 'Programming Languages', 1, 8, 1),
+
+-- Technical Skills - Frameworks
+('React', 'Frameworks', 1, 40, 1),
+('Node.js', 'Frameworks', 1, 38, 1),
+('Angular', 'Frameworks', 1, 25, 1),
+('Vue.js', 'Frameworks', 1, 22, 1),
+('Django', 'Frameworks', 1, 18, 1),
+('Spring Boot', 'Frameworks', 1, 16, 1),
+('Express.js', 'Frameworks', 1, 20, 1),
+('Next.js', 'Frameworks', 1, 15, 1),
+('.NET', 'Frameworks', 1, 18, 1),
+('Laravel', 'Frameworks', 1, 12, 1),
+('Flutter', 'Frameworks', 1, 10, 1),
+('React Native', 'Frameworks', 1, 14, 1),
+
+-- Technical Skills - Databases
+('SQL', 'Databases', 1, 50, 1),
+('PostgreSQL', 'Databases', 1, 30, 1),
+('MongoDB', 'Databases', 1, 28, 1),
+('MySQL', 'Databases', 1, 25, 1),
+('Redis', 'Databases', 1, 18, 1),
+('Elasticsearch', 'Databases', 1, 12, 1),
+('Oracle', 'Databases', 1, 10, 1),
+
+-- Technical Skills - Cloud & DevOps
+('AWS', 'Cloud & DevOps', 1, 35, 1),
+('Docker', 'Cloud & DevOps', 1, 32, 1),
+('Kubernetes', 'Cloud & DevOps', 1, 22, 1),
+('Azure', 'Cloud & DevOps', 1, 20, 1),
+('Google Cloud', 'Cloud & DevOps', 1, 18, 1),
+('CI/CD', 'Cloud & DevOps', 1, 25, 1),
+('Terraform', 'Cloud & DevOps', 1, 14, 1),
+('Jenkins', 'Cloud & DevOps', 1, 12, 1),
+('Git', 'Cloud & DevOps', 1, 55, 1),
+('Linux', 'Cloud & DevOps', 1, 30, 1),
+
+-- Technical Skills - Data & AI
+('Machine Learning', 'Data & AI', 1, 25, 1),
+('Data Analysis', 'Data & AI', 1, 28, 1),
+('TensorFlow', 'Data & AI', 1, 15, 1),
+('PyTorch', 'Data & AI', 1, 14, 1),
+('Data Visualization', 'Data & AI', 1, 20, 1),
+('Pandas', 'Data & AI', 1, 22, 1),
+('Scikit-learn', 'Data & AI', 1, 12, 1),
+('Deep Learning', 'Data & AI', 1, 10, 1),
+('NLP', 'Data & AI', 1, 8, 1),
+('Computer Vision', 'Data & AI', 1, 8, 1),
+
+-- Soft Skills
+('Communication', 'Soft Skills', 1, 60, 1),
+('Leadership', 'Soft Skills', 1, 45, 1),
+('Problem Solving', 'Soft Skills', 1, 55, 1),
+('Teamwork', 'Soft Skills', 1, 50, 1),
+('Project Management', 'Soft Skills', 1, 40, 1),
+('Critical Thinking', 'Soft Skills', 1, 35, 1),
+('Time Management', 'Soft Skills', 1, 38, 1),
+('Adaptability', 'Soft Skills', 1, 32, 1),
+('Creativity', 'Soft Skills', 1, 28, 1),
+('Presentation Skills', 'Soft Skills', 1, 25, 1),
+('Negotiation', 'Soft Skills', 1, 20, 1),
+('Mentoring', 'Soft Skills', 1, 18, 1),
+
+-- Tools
+('Jira', 'Tools', 1, 30, 1),
+('Figma', 'Tools', 1, 25, 1),
+('Slack', 'Tools', 1, 40, 1),
+('Microsoft Office', 'Tools', 1, 55, 1),
+('Excel', 'Tools', 1, 45, 1),
+('Photoshop', 'Tools', 1, 18, 1),
+('Salesforce', 'Tools', 1, 15, 1),
+('Tableau', 'Tools', 1, 12, 1),
+('Power BI', 'Tools', 1, 14, 1),
+('Google Analytics', 'Tools', 1, 20, 1);
+
+-- =====================================================
+-- Insert System Interests (Admin-managed)
+-- =====================================================
+INSERT INTO system_interests (name, category, icon, is_active, usage_count, created_by) VALUES
+-- Industries
+('Technology', 'Industry', 'laptop', 1, 85, 1),
+('Healthcare', 'Industry', 'heart-pulse', 1, 45, 1),
+('Finance', 'Industry', 'cash-stack', 1, 50, 1),
+('Education', 'Industry', 'mortarboard', 1, 35, 1),
+('E-commerce', 'Industry', 'cart3', 1, 40, 1),
+('Manufacturing', 'Industry', 'gear', 1, 20, 1),
+('Energy', 'Industry', 'lightning', 1, 18, 1),
+('Real Estate', 'Industry', 'house', 1, 22, 1),
+('Media & Entertainment', 'Industry', 'film', 1, 30, 1),
+('Automotive', 'Industry', 'car-front', 1, 25, 1),
+('Aerospace', 'Industry', 'airplane', 1, 12, 1),
+('Hospitality', 'Industry', 'building', 1, 18, 1),
+('Legal', 'Industry', 'bank', 1, 15, 1),
+('Non-profit', 'Industry', 'people', 1, 12, 1),
+('Government', 'Industry', 'flag', 1, 10, 1),
+('Consulting', 'Industry', 'diagram-3', 1, 28, 1),
+
+-- Job Fields
+('Software Development', 'Job Field', 'code-slash', 1, 70, 1),
+('Data Science', 'Job Field', 'graph-up', 1, 45, 1),
+('Product Management', 'Job Field', 'kanban', 1, 35, 1),
+('UX/UI Design', 'Job Field', 'palette', 1, 38, 1),
+('Marketing', 'Job Field', 'megaphone', 1, 42, 1),
+('Sales', 'Job Field', 'person-lines-fill', 1, 40, 1),
+('Human Resources', 'Job Field', 'people-fill', 1, 25, 1),
+('Operations', 'Job Field', 'sliders', 1, 22, 1),
+('Customer Support', 'Job Field', 'headset', 1, 20, 1),
+('DevOps', 'Job Field', 'server', 1, 30, 1),
+('Cybersecurity', 'Job Field', 'shield-lock', 1, 28, 1),
+('AI & Machine Learning', 'Job Field', 'robot', 1, 40, 1),
+('Cloud Computing', 'Job Field', 'cloud', 1, 32, 1),
+('Mobile Development', 'Job Field', 'phone', 1, 28, 1),
+('Quality Assurance', 'Job Field', 'check2-circle', 1, 22, 1),
+('Business Analysis', 'Job Field', 'clipboard-data', 1, 25, 1);
+
+-- =====================================================
+-- Insert Email Templates
+-- =====================================================
+INSERT INTO email_templates (name, subject, body, type, variables, is_active, created_by) VALUES
+('onboarding_scheduled', 'Your Onboarding Call is Scheduled - {app_name}', 
+'Hello {user_name},
+
+Great news! Your onboarding call has been scheduled.
+
+📅 Date: {appointment_date}
+⏰ Time: {appointment_time}
+⏱️ Duration: {duration} minutes
+🔗 Meeting Link: {meeting_link}
+
+What to expect:
+• Brief introduction to our platform
+• Discussion about your career goals
+• Overview of our job matching process
+• Q&A session
+
+Please click the meeting link at the scheduled time to join. We recommend joining 5 minutes early.
+
+If you need to reschedule, please log in to your account and manage your appointment.
+
+Best regards,
+The {app_name} Team', 
+'onboarding', '["user_name", "appointment_date", "appointment_time", "duration", "meeting_link", "app_name"]', 1, 1),
+
+('interview_invitation', 'Interview Invitation: {job_title} at {company_name}', 
+'Hello {user_name},
+
+Congratulations! 🎉
+
+We are pleased to inform you that your application for {job_title} at {company_name} has been shortlisted, and we would like to invite you for an interview.
+
+Please log in to your account to schedule your interview from the available time slots.
+
+Position: {job_title}
+Company: {company_name}
+Match Score: {match_score}%
+
+We look forward to speaking with you!
+
+Best regards,
+The {app_name} Recruitment Team', 
+'interview', '["user_name", "job_title", "company_name", "match_score", "app_name"]', 1, 1),
+
+('interview_scheduled', 'Interview Confirmed: {job_title}', 
+'Hello {user_name},
+
+Your interview has been confirmed!
+
+📋 Position: {job_title}
+🏢 Company: {company_name}
+📅 Date: {appointment_date}
+⏰ Time: {appointment_time}
+⏱️ Duration: {duration} minutes
+📍 Type: {meeting_type}
+🔗 Meeting Link: {meeting_link}
+
+Tips for your interview:
+• Test your video and audio before the call
+• Find a quiet, well-lit location
+• Have your resume ready
+• Prepare questions about the role
+
+Click the meeting link at the scheduled time to join. Good luck!
+
+Best regards,
+The {app_name} Team', 
+'interview', '["user_name", "job_title", "company_name", "appointment_date", "appointment_time", "duration", "meeting_type", "meeting_link", "app_name"]', 1, 1),
+
+('job_offer', 'Job Offer: {job_title} at {company_name}', 
+'Hello {user_name},
+
+We are thrilled to extend an offer for the position of {job_title} at {company_name}!
+
+This offer is a testament to your skills, experience, and the great impression you made during the interview process.
+
+Please log in to your account to review the offer details and respond.
+
+We hope you will join our team!
+
+Best regards,
+The {app_name} Recruitment Team',
+'offer', '["user_name", "job_title", "company_name", "app_name"]', 1, 1),
+
+('application_rejected', 'Application Update: {job_title}', 
+'Hello {user_name},
+
+Thank you for your interest in the {job_title} position at {company_name} and for taking the time to apply.
+
+After careful consideration, we have decided to move forward with other candidates whose experience more closely matches our current needs.
+
+We encourage you to continue exploring other opportunities on our platform. Your profile remains active, and you may be matched with other suitable positions.
+
+We appreciate your interest and wish you the best in your job search.
+
+Best regards,
+The {app_name} Team', 
+'rejection', '["user_name", "job_title", "company_name", "app_name"]', 1, 1),
+
+('welcome_activated', 'Welcome to {app_name} - Your Account is Now Active!', 
+'Hello {user_name},
+
+Congratulations! 🎉 Your account has been activated following your successful onboarding.
+
+You now have full access to:
+✅ Browse all available job listings
+✅ Apply for positions that match your skills
+✅ Receive AI-powered job recommendations
+✅ Track your applications in real-time
+✅ Message our recruitment team
+
+Start exploring opportunities now: {dashboard_link}
+
+If you have any questions, feel free to message us through the platform.
+
+Welcome aboard!
+
+Best regards,
+The {app_name} Team', 
+'welcome', '["user_name", "dashboard_link", "app_name"]', 1, 1),
+
+('ai_job_recommendation', 'New Job Match: {job_title} ({match_score}% Match)', 
+'Hello {user_name},
+
+Our AI has found a great match for you!
+
+🎯 Match Score: {match_score}%
+📋 Position: {job_title}
+🏢 Company: {company_name}
+📍 Location: {location}
+💼 Type: {job_type}
+💰 Salary: {salary_range}
+
+Based on your skills and interests, this position is an excellent fit for your profile.
+
+View this job and apply now: {job_link}
+
+Don''t miss this opportunity!
+
+Best regards,
+The {app_name} AI Matching Team', 
+'custom', '["user_name", "job_title", "company_name", "match_score", "location", "job_type", "salary_range", "job_link", "app_name"]', 1, 1);
+
+-- =====================================================
+-- Insert Meeting Settings
+-- =====================================================
+INSERT INTO meeting_settings (provider, is_default, base_url, settings, is_active) VALUES
+('zoom', 1, 'https://zoom.us/j/', '{"auto_recording": false, "waiting_room": true}', 1),
+('teams', 0, 'https://teams.microsoft.com/l/meetup-join/', '{"allow_guests": true}', 1),
+('google_meet', 0, 'https://meet.google.com/', '{}', 1);
+
+-- =====================================================
+-- Insert Sample Messages
+-- =====================================================
+INSERT INTO messages (sender_id, recipient_id, subject, body, is_read, priority) VALUES
+(1, 4, 'Welcome to Recruit Platform!', 'Hello John,\n\nWelcome to our recruitment platform! We''re excited to help you find your next opportunity.\n\nIf you have any questions, feel free to reply to this message.\n\nBest regards,\nThe Admin Team', 1, 'normal'),
+(1, 5, 'Your Interview is Coming Up!', 'Hi Jane,\n\nJust a reminder that your technical interview is scheduled for next week. Make sure to:\n- Test your camera and microphone\n- Have a stable internet connection\n- Prepare questions about the role\n\nGood luck!\n\nBest,\nRecruitment Team', 0, 'high'),
+(4, 1, 'Question about job application', 'Hi,\n\nI applied for the Senior Software Engineer position and wanted to ask about the timeline for the next steps.\n\nThank you!', 1, 'normal'),
+(1, 4, 'Re: Question about job application', 'Hi John,\n\nThank you for your application! Our team is currently reviewing all applications. You can expect to hear back from us within 5-7 business days.\n\nBest regards,\nRecruitment Team', 0, 'normal');
+
+-- =====================================================
 -- Display Summary
 -- =====================================================
 SELECT 'Database seeded successfully!' AS message;
@@ -322,4 +616,8 @@ SELECT
     (SELECT COUNT(*) FROM companies) AS total_companies,
     (SELECT COUNT(*) FROM jobs) AS total_jobs,
     (SELECT COUNT(*) FROM applications) AS total_applications,
-    (SELECT COUNT(*) FROM appointments) AS total_appointments;
+    (SELECT COUNT(*) FROM appointments) AS total_appointments,
+    (SELECT COUNT(*) FROM system_skills) AS total_skills,
+    (SELECT COUNT(*) FROM system_interests) AS total_interests,
+    (SELECT COUNT(*) FROM email_templates) AS total_templates,
+    (SELECT COUNT(*) FROM messages) AS total_messages;

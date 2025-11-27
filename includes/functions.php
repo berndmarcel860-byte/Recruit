@@ -309,3 +309,273 @@ function logActivity($userId, $action, $entityType = null, $entityId = null, $de
         'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null
     ]);
 }
+
+/**
+ * Generate a meeting link based on the configured provider
+ */
+function generateMeetingLink($meetingId = null, $provider = null) {
+    $provider = $provider ?? MEETING_PROVIDER;
+    $meetingId = $meetingId ?? uniqid('mtg_');
+    
+    switch ($provider) {
+        case 'zoom':
+            return ZOOM_BASE_URL . $meetingId;
+        case 'teams':
+            return TEAMS_BASE_URL . $meetingId;
+        case 'google_meet':
+            return GOOGLE_MEET_BASE_URL . $meetingId;
+        default:
+            return ZOOM_BASE_URL . $meetingId;
+    }
+}
+
+/**
+ * Get meeting provider display name
+ */
+function getMeetingProviderName($provider = null) {
+    $provider = $provider ?? MEETING_PROVIDER;
+    $names = [
+        'zoom' => 'Zoom',
+        'teams' => 'Microsoft Teams',
+        'google_meet' => 'Google Meet'
+    ];
+    return $names[$provider] ?? 'Video Call';
+}
+
+/**
+ * Send email using template
+ */
+function sendTemplatedEmail($templateName, $recipientId, $variables = [], $senderId = null) {
+    $db = Database::getInstance();
+    
+    // Get template
+    $template = $db->fetch(
+        "SELECT * FROM email_templates WHERE name = :name AND is_active = 1",
+        ['name' => $templateName]
+    );
+    
+    if (!$template) {
+        return ['success' => false, 'message' => 'Email template not found'];
+    }
+    
+    // Get recipient
+    $recipient = getUserById($recipientId);
+    if (!$recipient) {
+        return ['success' => false, 'message' => 'Recipient not found'];
+    }
+    
+    // Add default variables
+    $variables['user_name'] = $recipient['first_name'] . ' ' . $recipient['last_name'];
+    $variables['app_name'] = APP_NAME;
+    $variables['user_email'] = $recipient['email'];
+    $variables['dashboard_link'] = APP_URL . '/pages/dashboard.php';
+    
+    // Replace variables in subject and body
+    $subject = $template['subject'];
+    $body = $template['body'];
+    
+    foreach ($variables as $key => $value) {
+        $subject = str_replace('{' . $key . '}', $value, $subject);
+        $body = str_replace('{' . $key . '}', $value, $body);
+    }
+    
+    // Get sender ID (default to admin)
+    if (!$senderId) {
+        $admin = $db->fetch("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+        $senderId = $admin ? $admin['id'] : 1;
+    }
+    
+    // Store email in database
+    $emailId = $db->insert('emails', [
+        'recipient_id' => $recipientId,
+        'sender_id' => $senderId,
+        'subject' => $subject,
+        'body' => $body,
+        'type' => $template['type'],
+        'status' => 'sent',
+        'sent_at' => date('Y-m-d H:i:s')
+    ]);
+    
+    // Attempt to send actual email if SMTP is configured
+    $emailSent = false;
+    if (defined('SMTP_HOST') && SMTP_HOST && SMTP_HOST !== 'smtp.example.com') {
+        $emailSent = sendActualEmail($recipient['email'], $subject, $body);
+    }
+    
+    return [
+        'success' => true,
+        'email_id' => $emailId,
+        'actually_sent' => $emailSent,
+        'message' => 'Email recorded' . ($emailSent ? ' and sent' : '')
+    ];
+}
+
+/**
+ * Send actual email via SMTP
+ */
+function sendActualEmail($to, $subject, $body) {
+    // Use PHP's mail() function or a library like PHPMailer
+    // For now, return false as SMTP setup is server-specific
+    $headers = [
+        'From' => MAIL_FROM_NAME . ' <' . MAIL_FROM_ADDRESS . '>',
+        'Reply-To' => SUPPORT_EMAIL,
+        'Content-Type' => 'text/plain; charset=UTF-8',
+        'X-Mailer' => 'PHP/' . phpversion()
+    ];
+    
+    return @mail($to, $subject, $body, implode("\r\n", array_map(
+        function($k, $v) { return "$k: $v"; },
+        array_keys($headers),
+        $headers
+    )));
+}
+
+/**
+ * Create in-app notification
+ */
+function createNotification($userId, $type, $title, $message, $link = null, $priority = 'normal', $relatedId = null, $relatedType = null) {
+    $db = Database::getInstance();
+    return $db->insert('notifications', [
+        'user_id' => $userId,
+        'type' => $type,
+        'title' => $title,
+        'message' => $message,
+        'link' => $link,
+        'priority' => $priority,
+        'related_id' => $relatedId,
+        'related_type' => $relatedType
+    ]);
+}
+
+/**
+ * Update user account status
+ */
+function updateAccountStatus($userId, $status, $notes = null, $activatedBy = null) {
+    $db = Database::getInstance();
+    
+    $data = ['account_status' => $status];
+    
+    if ($status === 'active') {
+        $data['activated_at'] = date('Y-m-d H:i:s');
+        $data['activated_by'] = $activatedBy;
+    }
+    
+    if ($notes) {
+        $data['onboarding_notes'] = $notes;
+    }
+    
+    $db->update('users', $data, 'id = :id', ['id' => $userId]);
+    
+    logActivity($activatedBy ?? $userId, 'account_status_change', 'user', $userId, [
+        'new_status' => $status
+    ]);
+    
+    return true;
+}
+
+/**
+ * Send a message
+ */
+function sendMessage($senderId, $recipientId, $subject, $body, $parentId = null, $priority = 'normal') {
+    $db = Database::getInstance();
+    
+    $messageId = $db->insert('messages', [
+        'sender_id' => $senderId,
+        'recipient_id' => $recipientId,
+        'subject' => $subject,
+        'body' => $body,
+        'parent_id' => $parentId,
+        'priority' => $priority
+    ]);
+    
+    // Create notification for recipient
+    $sender = getUserById($senderId);
+    createNotification(
+        $recipientId,
+        'message',
+        'New Message from ' . $sender['first_name'],
+        substr(strip_tags($body), 0, 100) . '...',
+        'pages/messages.php?id=' . $messageId,
+        $priority
+    );
+    
+    return $messageId;
+}
+
+/**
+ * Get unread message count
+ */
+function getUnreadMessageCount($userId) {
+    $db = Database::getInstance();
+    return $db->count('messages', 'recipient_id = :id AND is_read = 0', ['id' => $userId]);
+}
+
+/**
+ * Get unread notification count
+ */
+function getUnreadNotificationCount($userId) {
+    $db = Database::getInstance();
+    return $db->count('notifications', 'user_id = :id AND is_read = 0', ['id' => $userId]);
+}
+
+/**
+ * Get system skills list
+ */
+function getSystemSkills($category = null, $limit = 100) {
+    $db = Database::getInstance();
+    
+    $where = "is_active = 1";
+    $params = [];
+    
+    if ($category) {
+        $where .= " AND category = :category";
+        $params['category'] = $category;
+    }
+    
+    return $db->fetchAll(
+        "SELECT * FROM system_skills WHERE $where ORDER BY usage_count DESC, name ASC LIMIT $limit",
+        $params
+    );
+}
+
+/**
+ * Get system interests list
+ */
+function getSystemInterests($category = null, $limit = 100) {
+    $db = Database::getInstance();
+    
+    $where = "is_active = 1";
+    $params = [];
+    
+    if ($category) {
+        $where .= " AND category = :category";
+        $params['category'] = $category;
+    }
+    
+    return $db->fetchAll(
+        "SELECT * FROM system_interests WHERE $where ORDER BY usage_count DESC, name ASC LIMIT $limit",
+        $params
+    );
+}
+
+/**
+ * Increment skill usage count
+ */
+function incrementSkillUsage($skillName) {
+    $db = Database::getInstance();
+    $db->query(
+        "UPDATE system_skills SET usage_count = usage_count + 1 WHERE name = :name",
+        ['name' => $skillName]
+    );
+}
+
+/**
+ * Increment interest usage count
+ */
+function incrementInterestUsage($interestName) {
+    $db = Database::getInstance();
+    $db->query(
+        "UPDATE system_interests SET usage_count = usage_count + 1 WHERE name = :name",
+        ['name' => $interestName]
+    );
+}

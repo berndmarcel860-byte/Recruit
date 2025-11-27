@@ -138,6 +138,61 @@ switch ($action) {
         jsonResponse($result);
         break;
         
+    case 'get_notifications':
+        if (!isLoggedIn()) {
+            jsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
+        
+        $db = Database::getInstance();
+        $notifications = $db->fetchAll(
+            "SELECT * FROM notifications WHERE user_id = :id ORDER BY created_at DESC LIMIT 20",
+            ['id' => $_SESSION['user_id']]
+        );
+        
+        jsonResponse(['success' => true, 'notifications' => $notifications]);
+        break;
+        
+    case 'mark_notifications_read':
+        if (!isLoggedIn()) {
+            jsonResponse(['success' => false, 'message' => 'Not authenticated'], 401);
+        }
+        
+        $db = Database::getInstance();
+        $notificationId = (int)($_POST['notification_id'] ?? 0);
+        
+        if ($notificationId) {
+            $db->update('notifications', [
+                'is_read' => 1,
+                'read_at' => date('Y-m-d H:i:s')
+            ], 'id = :id AND user_id = :user_id', [
+                'id' => $notificationId,
+                'user_id' => $_SESSION['user_id']
+            ]);
+        } else {
+            // Mark all as read
+            $db->update('notifications', [
+                'is_read' => 1,
+                'read_at' => date('Y-m-d H:i:s')
+            ], 'user_id = :user_id AND is_read = 0', [
+                'user_id' => $_SESSION['user_id']
+            ]);
+        }
+        
+        jsonResponse(['success' => true, 'message' => 'Notifications marked as read']);
+        break;
+        
+    case 'get_system_skills':
+        $category = sanitize($_GET['category'] ?? '');
+        $skills = getSystemSkills($category);
+        jsonResponse(['success' => true, 'skills' => $skills]);
+        break;
+        
+    case 'get_system_interests':
+        $category = sanitize($_GET['category'] ?? '');
+        $interests = getSystemInterests($category);
+        jsonResponse(['success' => true, 'interests' => $interests]);
+        break;
+        
     default:
         jsonResponse(['success' => false, 'message' => 'Invalid action'], 400);
 }

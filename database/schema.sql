@@ -271,3 +271,103 @@ CREATE TABLE activity_log (
     INDEX idx_action (action),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB;
+
+-- =====================================================
+-- MESSAGES TABLE
+-- In-app messaging system between users and admins
+-- =====================================================
+CREATE TABLE messages (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    sender_id INT NOT NULL,
+    recipient_id INT NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    parent_id INT COMMENT 'For reply threads',
+    is_read TINYINT(1) DEFAULT 0,
+    read_at DATETIME,
+    is_archived_sender TINYINT(1) DEFAULT 0,
+    is_archived_recipient TINYINT(1) DEFAULT 0,
+    priority ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES messages(id) ON DELETE SET NULL,
+    INDEX idx_sender (sender_id),
+    INDEX idx_recipient (recipient_id),
+    INDEX idx_is_read (is_read),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- SYSTEM_SKILLS TABLE
+-- Admin-managed skills that users can select
+-- =====================================================
+CREATE TABLE system_skills (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(100) COMMENT 'Technical, Soft Skills, Tools, etc.',
+    is_active TINYINT(1) DEFAULT 1,
+    usage_count INT DEFAULT 0 COMMENT 'How many users have this skill',
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_category (category),
+    INDEX idx_is_active (is_active),
+    INDEX idx_usage (usage_count DESC)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- SYSTEM_INTERESTS TABLE
+-- Admin-managed interests/industries that users can select
+-- =====================================================
+CREATE TABLE system_interests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    category VARCHAR(100) COMMENT 'Industry, Field, etc.',
+    icon VARCHAR(50) COMMENT 'Bootstrap icon name',
+    is_active TINYINT(1) DEFAULT 1,
+    usage_count INT DEFAULT 0 COMMENT 'How many users have this interest',
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_category (category),
+    INDEX idx_is_active (is_active),
+    INDEX idx_usage (usage_count DESC)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- EMAIL_TEMPLATES TABLE
+-- Reusable email templates for common notifications
+-- =====================================================
+CREATE TABLE email_templates (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    subject VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    type ENUM('onboarding', 'interview', 'offer', 'rejection', 'reminder', 'welcome', 'custom') NOT NULL,
+    variables JSON COMMENT 'Available placeholders like {user_name}, {meeting_link}',
+    is_active TINYINT(1) DEFAULT 1,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_type (type),
+    INDEX idx_is_active (is_active)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- MEETING_SETTINGS TABLE
+-- Settings for video meeting integrations (Teams/Zoom)
+-- =====================================================
+CREATE TABLE meeting_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    provider ENUM('teams', 'zoom', 'google_meet', 'custom') NOT NULL,
+    is_default TINYINT(1) DEFAULT 0,
+    base_url VARCHAR(500) COMMENT 'Base meeting URL pattern',
+    api_key VARCHAR(500) COMMENT 'API key if needed (encrypted)',
+    settings JSON COMMENT 'Additional provider-specific settings',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
