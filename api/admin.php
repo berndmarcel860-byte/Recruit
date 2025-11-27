@@ -9,8 +9,8 @@ require_once __DIR__ . '/../includes/functions.php';
 
 header('Content-Type: application/json');
 
-// Require admin authentication
-if (!isLoggedIn() || !isAdmin()) {
+// Require admin or moderator authentication
+if (!isLoggedIn() || !isModerator()) {
     jsonResponse(['success' => false, 'message' => 'Admin access required'], 403);
 }
 
@@ -22,9 +22,12 @@ switch ($action) {
     case 'dashboard':
         $stats = [
             'total_users' => $db->count('users', "role = 'user'"),
+            'active_users' => $db->count('users', "role = 'user' AND account_status = 'active'"),
+            'pending_onboarding' => $db->count('users', "role = 'user' AND account_status IN ('pending_onboarding', 'onboarding_scheduled')"),
             'active_jobs' => $db->count('jobs', "status = 'active'"),
             'total_applications' => $db->count('applications'),
             'pending_applications' => $db->count('applications', "status = 'pending'"),
+            'interviews_scheduled' => $db->count('applications', "status = 'interview_scheduled'"),
             'upcoming_appointments' => $db->count('appointments', "scheduled_at >= NOW() AND status IN ('scheduled', 'confirmed')"),
             'total_companies' => $db->count('companies', "is_active = 1")
         ];
@@ -39,10 +42,22 @@ switch ($action) {
              LIMIT 5"
         );
         
+        // Pending onboarding appointments
+        $pendingOnboarding = $db->fetchAll(
+            "SELECT ap.*, u.first_name, u.last_name, u.email
+             FROM appointments ap
+             JOIN users u ON ap.user_id = u.id
+             WHERE ap.type = 'onboarding' AND ap.status IN ('scheduled', 'confirmed')
+             AND ap.scheduled_at >= NOW()
+             ORDER BY ap.scheduled_at ASC
+             LIMIT 5"
+        );
+        
         jsonResponse([
             'success' => true,
             'stats' => $stats,
-            'recent_applications' => $recentApplications
+            'recent_applications' => $recentApplications,
+            'pending_onboarding' => $pendingOnboarding
         ]);
         break;
         
@@ -695,6 +710,389 @@ switch ($action) {
         }
         
         jsonResponse(['success' => true, 'skills' => $popularSkills]);
+        break;
+        
+    // =====================================================
+    // ONBOARDING & WORKFLOW MANAGEMENT
+    // =====================================================
+    
+    // Complete onboarding for a user
+    case 'complete_onboarding':
+        $userId = (int)($_POST['user_id'] ?? 0);
+        $appointmentId = (int)($_POST['appointment_id'] ?? 0);
+        $outcome = sanitize($_POST['outcome'] ?? 'passed'); // passed or failed
+        $notes = sanitize($_POST['notes'] ?? '');
+        $feedback = sanitize($_POST['feedback'] ?? '');
+        
+        if (!$userId) {
+            jsonResponse(['success' => false, 'message' => 'User ID required'], 400);
+        }
+        
+        $user = getUserById($userId);
+        if (!$user) {
+            jsonResponse(['success' => false, 'message' => 'User not found'], 404);
+        }
+        
+        // Update appointment if provided
+        if ($appointmentId) {
+            $db->update('appointments', [
+                'status' => 'completed',
+                'outcome' => $outcome,
+                'feedback' => $feedback,
+                'notes' => $notes
+            ], 'id = :id', ['id' => $appointmentId]);
+        }
+        
+        if ($outcome === 'passed') {
+            // Activate the user account
+            updateAccountStatus($userId, 'active', $notes, $_SESSION['user_id']);
+            
+            // Create notification
+            createNotification(
+                $userId,
+                'onboarding',
+                'Welcome to ' . APP_NAME . '!',
+                'Your onboarding is complete! You can now browse and apply for jobs.',
+                'pages/jobs.php',
+                'high'
+            );
+            
+            // Send welcome email
+            $db->insert('emails', [
+                'recipient_id' => $userId,
+                'sender_id' => $_SESSION['user_id'],
+                'subject' => 'Welcome to ' . APP_NAME . ' - Your Account is Now Active!',
+                'body' => "Hi {$user['first_name']},\n\nGreat news! Your onboarding is complete and your account is now fully activated.\n\nYou can now:\n- Browse all available job listings\n- Apply for positions that match your skills\n- Receive AI-powered job recommendations\n\nStart your job search today!\n\nBest regards,\nThe " . APP_NAME . " Team",
+                'type' => 'welcome',
+                'status' => 'sent',
+                'sent_at' => date('Y-m-d H:i:s')
+            ]);
+        } else {
+            // Reject the user
+            updateAccountStatus($userId, 'rejected', $notes, $_SESSION['user_id']);
+            
+            createNotification(
+                $userId,
+                'system',
+                'Account Status Update',
+                'We regret to inform you that your application was not approved at this time. Please contact support for more information.',
+                null,
+                'high'
+            );
+        }
+        
+        logActivity($_SESSION['user_id'], 'complete_onboarding', 'user', $userId, [
+            'outcome' => $outcome,
+            'notes' => $notes
+        ]);
+        
+        jsonResponse([
+            'success' => true, 
+            'message' => $outcome === 'passed' ? 'User account activated successfully' : 'User application rejected'
+        ]);
+        break;
+        
+    // Accept application and invite for interview
+    case 'accept_application':
+        $applicationId = (int)($_POST['application_id'] ?? 0);
+        $notes = sanitize($_POST['notes'] ?? '');
+        
+        if (!$applicationId) {
+            jsonResponse(['success' => false, 'message' => 'Application ID required'], 400);
+        }
+        
+        $application = $db->fetch(
+            "SELECT a.*, u.first_name, u.email, j.title as job_title
+             FROM applications a
+             JOIN users u ON a.user_id = u.id
+             JOIN jobs j ON a.job_id = j.id
+             WHERE a.id = :id",
+            ['id' => $applicationId]
+        );
+        
+        if (!$application) {
+            jsonResponse(['success' => false, 'message' => 'Application not found'], 404);
+        }
+        
+        // Update application status to shortlisted
+        $db->update('applications', [
+            'status' => 'shortlisted',
+            'notes' => $notes,
+            'reviewed_at' => date('Y-m-d H:i:s'),
+            'reviewed_by' => $_SESSION['user_id']
+        ], 'id = :id', ['id' => $applicationId]);
+        
+        // Create notification for user to schedule interview
+        createNotification(
+            $application['user_id'],
+            'interview',
+            'Interview Invitation! 🎉',
+            'Congratulations! Your application for ' . $application['job_title'] . ' has been shortlisted. Please schedule your interview.',
+            'pages/applications.php',
+            'urgent',
+            $applicationId,
+            'application'
+        );
+        
+        // Send email
+        $db->insert('emails', [
+            'recipient_id' => $application['user_id'],
+            'sender_id' => $_SESSION['user_id'],
+            'subject' => 'Interview Invitation - ' . $application['job_title'],
+            'body' => "Hi {$application['first_name']},\n\nCongratulations! We're pleased to inform you that your application for {$application['job_title']} has been shortlisted.\n\nPlease log in to your account and schedule your interview at your earliest convenience.\n\nBest of luck!\n\nThe " . APP_NAME . " Team",
+            'type' => 'interview-invite',
+            'status' => 'sent',
+            'sent_at' => date('Y-m-d H:i:s')
+        ]);
+        
+        logActivity($_SESSION['user_id'], 'accept_application', 'application', $applicationId);
+        
+        jsonResponse([
+            'success' => true,
+            'message' => 'Application accepted. Interview invitation sent to candidate.'
+        ]);
+        break;
+        
+    // Reject application
+    case 'reject_application':
+        $applicationId = (int)($_POST['application_id'] ?? 0);
+        $notes = sanitize($_POST['notes'] ?? '');
+        $reason = sanitize($_POST['reason'] ?? 'Not selected for this position');
+        
+        if (!$applicationId) {
+            jsonResponse(['success' => false, 'message' => 'Application ID required'], 400);
+        }
+        
+        $application = $db->fetch(
+            "SELECT a.*, u.first_name, u.email, j.title as job_title
+             FROM applications a
+             JOIN users u ON a.user_id = u.id
+             JOIN jobs j ON a.job_id = j.id
+             WHERE a.id = :id",
+            ['id' => $applicationId]
+        );
+        
+        if (!$application) {
+            jsonResponse(['success' => false, 'message' => 'Application not found'], 404);
+        }
+        
+        $db->update('applications', [
+            'status' => 'rejected',
+            'notes' => $notes,
+            'reviewed_at' => date('Y-m-d H:i:s'),
+            'reviewed_by' => $_SESSION['user_id']
+        ], 'id = :id', ['id' => $applicationId]);
+        
+        createNotification(
+            $application['user_id'],
+            'application',
+            'Application Update',
+            'Your application for ' . $application['job_title'] . ' has been reviewed. Unfortunately, we have decided to proceed with other candidates.',
+            'pages/applications.php',
+            'normal',
+            $applicationId,
+            'application'
+        );
+        
+        logActivity($_SESSION['user_id'], 'reject_application', 'application', $applicationId);
+        
+        jsonResponse([
+            'success' => true,
+            'message' => 'Application rejected. Candidate has been notified.'
+        ]);
+        break;
+        
+    // Complete interview and make decision
+    case 'complete_interview':
+        $appointmentId = (int)($_POST['appointment_id'] ?? 0);
+        $applicationId = (int)($_POST['application_id'] ?? 0);
+        $outcome = sanitize($_POST['outcome'] ?? 'pending'); // passed, failed
+        $feedback = sanitize($_POST['feedback'] ?? '');
+        $nextStep = sanitize($_POST['next_step'] ?? ''); // offer, reject, another_interview
+        
+        if (!$appointmentId) {
+            jsonResponse(['success' => false, 'message' => 'Appointment ID required'], 400);
+        }
+        
+        $appointment = $db->fetch("SELECT * FROM appointments WHERE id = :id", ['id' => $appointmentId]);
+        if (!$appointment) {
+            jsonResponse(['success' => false, 'message' => 'Appointment not found'], 404);
+        }
+        
+        // Update appointment
+        $db->update('appointments', [
+            'status' => 'completed',
+            'outcome' => $outcome,
+            'feedback' => $feedback
+        ], 'id = :id', ['id' => $appointmentId]);
+        
+        // Update application based on outcome
+        if ($applicationId) {
+            $application = $db->fetch(
+                "SELECT a.*, u.first_name, j.title as job_title
+                 FROM applications a
+                 JOIN users u ON a.user_id = u.id
+                 JOIN jobs j ON a.job_id = j.id
+                 WHERE a.id = :id",
+                ['id' => $applicationId]
+            );
+            
+            if ($nextStep === 'offer') {
+                $db->update('applications', [
+                    'status' => 'offered',
+                    'interview_feedback' => $feedback,
+                    'offer_sent_at' => date('Y-m-d H:i:s')
+                ], 'id = :id', ['id' => $applicationId]);
+                
+                createNotification(
+                    $appointment['user_id'],
+                    'offer',
+                    'Job Offer! 🎉',
+                    'Congratulations! You have received a job offer for ' . $application['job_title'] . '!',
+                    'pages/applications.php',
+                    'urgent',
+                    $applicationId,
+                    'application'
+                );
+            } elseif ($nextStep === 'reject') {
+                $db->update('applications', [
+                    'status' => 'rejected',
+                    'interview_feedback' => $feedback
+                ], 'id = :id', ['id' => $applicationId]);
+                
+                createNotification(
+                    $appointment['user_id'],
+                    'application',
+                    'Interview Result',
+                    'Thank you for interviewing for ' . $application['job_title'] . '. Unfortunately, we will not be moving forward.',
+                    'pages/applications.php',
+                    'normal',
+                    $applicationId,
+                    'application'
+                );
+            } else {
+                $db->update('applications', [
+                    'status' => 'interview_completed',
+                    'interview_feedback' => $feedback
+                ], 'id = :id', ['id' => $applicationId]);
+            }
+        }
+        
+        logActivity($_SESSION['user_id'], 'complete_interview', 'appointment', $appointmentId, [
+            'outcome' => $outcome,
+            'next_step' => $nextStep
+        ]);
+        
+        jsonResponse([
+            'success' => true,
+            'message' => 'Interview completed and recorded.'
+        ]);
+        break;
+        
+    // Get users pending onboarding
+    case 'get_pending_onboarding':
+        $users = $db->fetchAll(
+            "SELECT u.*, 
+                    (SELECT COUNT(*) FROM appointments WHERE user_id = u.id AND type = 'onboarding' AND status = 'scheduled') as has_appointment,
+                    (SELECT scheduled_at FROM appointments WHERE user_id = u.id AND type = 'onboarding' AND status = 'scheduled' ORDER BY scheduled_at ASC LIMIT 1) as appointment_date
+             FROM users u
+             WHERE u.role = 'user' AND u.account_status IN ('pending_onboarding', 'onboarding_scheduled')
+             ORDER BY u.created_at DESC"
+        );
+        
+        jsonResponse(['success' => true, 'users' => $users]);
+        break;
+        
+    // Manage available time slots
+    case 'create_slot':
+        $date = sanitize($_POST['slot_date'] ?? '');
+        $startTime = sanitize($_POST['start_time'] ?? '');
+        $endTime = sanitize($_POST['end_time'] ?? '');
+        $slotType = sanitize($_POST['slot_type'] ?? 'both');
+        
+        if (!$date || !$startTime || !$endTime) {
+            jsonResponse(['success' => false, 'message' => 'Date and times are required'], 400);
+        }
+        
+        $slotId = $db->insert('available_slots', [
+            'admin_id' => $_SESSION['user_id'],
+            'slot_date' => $date,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'slot_type' => $slotType
+        ]);
+        
+        jsonResponse(['success' => true, 'message' => 'Time slot created', 'slot_id' => $slotId]);
+        break;
+        
+    case 'get_slots':
+        $fromDate = sanitize($_GET['from_date'] ?? date('Y-m-d'));
+        $toDate = sanitize($_GET['to_date'] ?? date('Y-m-d', strtotime('+14 days')));
+        
+        $slots = $db->fetchAll(
+            "SELECT s.*, u.first_name as admin_name,
+                    bu.first_name as booked_by_name, bu.last_name as booked_by_lastname
+             FROM available_slots s
+             JOIN users u ON s.admin_id = u.id
+             LEFT JOIN users bu ON s.booked_by = bu.id
+             WHERE s.slot_date BETWEEN :from_date AND :to_date
+             ORDER BY s.slot_date ASC, s.start_time ASC",
+            ['from_date' => $fromDate, 'to_date' => $toDate]
+        );
+        
+        jsonResponse(['success' => true, 'slots' => $slots]);
+        break;
+        
+    case 'delete_slot':
+        $slotId = (int)($_POST['slot_id'] ?? 0);
+        
+        $slot = $db->fetch("SELECT * FROM available_slots WHERE id = :id", ['id' => $slotId]);
+        if (!$slot) {
+            jsonResponse(['success' => false, 'message' => 'Slot not found'], 404);
+        }
+        
+        if ($slot['is_booked']) {
+            jsonResponse(['success' => false, 'message' => 'Cannot delete a booked slot'], 400);
+        }
+        
+        $db->query("DELETE FROM available_slots WHERE id = :id", ['id' => $slotId]);
+        
+        jsonResponse(['success' => true, 'message' => 'Slot deleted']);
+        break;
+        
+    // Get notifications for admin
+    case 'get_notifications':
+        $notifications = $db->fetchAll(
+            "SELECT * FROM notifications WHERE user_id = :id ORDER BY created_at DESC LIMIT 20",
+            ['id' => $_SESSION['user_id']]
+        );
+        
+        jsonResponse(['success' => true, 'notifications' => $notifications]);
+        break;
+        
+    // Mark notification as read
+    case 'mark_notification_read':
+        $notificationId = (int)($_POST['notification_id'] ?? 0);
+        
+        if ($notificationId) {
+            $db->update('notifications', [
+                'is_read' => 1,
+                'read_at' => date('Y-m-d H:i:s')
+            ], 'id = :id AND user_id = :user_id', [
+                'id' => $notificationId,
+                'user_id' => $_SESSION['user_id']
+            ]);
+        } else {
+            // Mark all as read
+            $db->update('notifications', [
+                'is_read' => 1,
+                'read_at' => date('Y-m-d H:i:s')
+            ], 'user_id = :user_id AND is_read = 0', [
+                'user_id' => $_SESSION['user_id']
+            ]);
+        }
+        
+        jsonResponse(['success' => true, 'message' => 'Notifications marked as read']);
         break;
         
     default:

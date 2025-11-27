@@ -28,14 +28,19 @@ CREATE TABLE users (
     education JSON COMMENT 'Array of education objects',
     cv_path VARCHAR(500) COMMENT 'Path to uploaded CV file',
     profile_picture VARCHAR(500),
-    role ENUM('user', 'admin') DEFAULT 'user',
+    role ENUM('user', 'admin', 'moderator') DEFAULT 'user',
+    account_status ENUM('pending_onboarding', 'onboarding_scheduled', 'active', 'suspended', 'rejected') DEFAULT 'pending_onboarding' COMMENT 'Account workflow status',
     is_active TINYINT(1) DEFAULT 1,
+    onboarding_notes TEXT COMMENT 'Notes from onboarding appointment',
+    activated_at DATETIME COMMENT 'When account was activated after onboarding',
+    activated_by INT COMMENT 'Admin who activated the account',
     last_login DATETIME,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_role (role),
-    INDEX idx_is_active (is_active)
+    INDEX idx_is_active (is_active),
+    INDEX idx_account_status (account_status)
 ) ENGINE=InnoDB;
 
 -- =====================================================
@@ -107,7 +112,7 @@ CREATE TABLE applications (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     job_id INT NOT NULL,
-    status ENUM('pending', 'reviewed', 'shortlisted', 'interview', 'offered', 'hired', 'rejected') DEFAULT 'pending',
+    status ENUM('pending', 'reviewed', 'shortlisted', 'interview_scheduled', 'interview_completed', 'offered', 'offer_accepted', 'hired', 'rejected', 'withdrawn') DEFAULT 'pending',
     cover_letter TEXT,
     cv_path VARCHAR(500) COMMENT 'CV used for this application',
     notes TEXT COMMENT 'Admin notes on the application',
@@ -115,6 +120,10 @@ CREATE TABLE applications (
     source ENUM('manual', 'ai-recommended', 'admin-offered') DEFAULT 'manual',
     reviewed_at DATETIME,
     reviewed_by INT,
+    interview_scheduled_at DATETIME COMMENT 'When interview was scheduled',
+    interview_feedback TEXT COMMENT 'Feedback from interview',
+    offer_sent_at DATETIME COMMENT 'When job offer was sent',
+    offer_response_at DATETIME COMMENT 'When user responded to offer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -135,22 +144,24 @@ CREATE TABLE appointments (
     id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT NOT NULL,
     application_id INT,
-    created_by INT NOT NULL,
-    type ENUM('interview', 'onboarding', 'follow-up', 'assessment') DEFAULT 'interview',
+    created_by INT,
+    type ENUM('interview', 'onboarding', 'follow-up', 'assessment', 'initial_call') DEFAULT 'interview',
     title VARCHAR(255) NOT NULL,
     description TEXT,
     scheduled_at DATETIME NOT NULL,
     duration INT DEFAULT 60 COMMENT 'Duration in minutes',
     location VARCHAR(255),
     meeting_link VARCHAR(500),
-    status ENUM('scheduled', 'confirmed', 'completed', 'cancelled', 'rescheduled') DEFAULT 'scheduled',
+    status ENUM('scheduled', 'confirmed', 'completed', 'cancelled', 'rescheduled', 'no_show', 'passed', 'failed') DEFAULT 'scheduled',
     notes TEXT,
     feedback TEXT,
+    outcome ENUM('pending', 'passed', 'failed') DEFAULT 'pending' COMMENT 'Outcome of the appointment',
+    booked_by_user TINYINT(1) DEFAULT 0 COMMENT 'Whether user self-booked this appointment',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_user (user_id),
     INDEX idx_application (application_id),
     INDEX idx_scheduled (scheduled_at),
@@ -192,6 +203,53 @@ CREATE TABLE password_resets (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_token (token)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- NOTIFICATIONS TABLE
+-- In-app notifications for users
+-- =====================================================
+CREATE TABLE notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    type ENUM('onboarding', 'application', 'interview', 'offer', 'message', 'system', 'reminder') NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(500) COMMENT 'Link to relevant page',
+    is_read TINYINT(1) DEFAULT 0,
+    priority ENUM('low', 'normal', 'high', 'urgent') DEFAULT 'normal',
+    related_id INT COMMENT 'ID of related entity (application, appointment, etc)',
+    related_type VARCHAR(50) COMMENT 'Type of related entity',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    read_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user (user_id),
+    INDEX idx_type (type),
+    INDEX idx_is_read (is_read),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- AVAILABLE_SLOTS TABLE
+-- Available time slots for onboarding/interview appointments
+-- =====================================================
+CREATE TABLE available_slots (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    admin_id INT NOT NULL,
+    slot_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    slot_type ENUM('onboarding', 'interview', 'both') DEFAULT 'both',
+    is_booked TINYINT(1) DEFAULT 0,
+    booked_by INT COMMENT 'User who booked this slot',
+    appointment_id INT COMMENT 'Related appointment',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (booked_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL,
+    INDEX idx_admin (admin_id),
+    INDEX idx_date (slot_date),
+    INDEX idx_is_booked (is_booked)
 ) ENGINE=InnoDB;
 
 -- =====================================================

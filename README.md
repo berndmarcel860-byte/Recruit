@@ -1,75 +1,112 @@
 # Recruit - Professional Job Recruitment Platform
 
-A complete job recruitment web application with database, frontend, and backend built with PHP, MySQL, Bootstrap 5, and AJAX.
+A complete, professional job recruitment web application with comprehensive workflow management, built with PHP, MySQL, Bootstrap 5, and AJAX.
 
-## Features
+## Key Features
 
-### For Job Seekers (Users)
-- **User Registration & Profile**
-  - Complete profile with personal information
-  - Skills and interests management
-  - Work experience and education history
-  - CV/Resume upload support
-  
+### 🔄 Professional Workflow System
+
+The platform implements a complete recruitment workflow:
+
+1. **User Registration** → Account status: `pending_onboarding`
+2. **Onboarding Scheduling** → User books an onboarding call
+3. **Onboarding Completion** → Admin/moderator activates account
+4. **Job Application** → User applies or receives AI recommendations
+5. **Application Review** → Moderator accepts/rejects
+6. **Interview Scheduling** → Accepted candidates schedule interviews
+7. **Hiring Decision** → Final offer or rejection
+
+### 👤 For Job Seekers (Users)
+
+- **Multi-step Registration**
+  - Personal information with validation
+  - Skills selection with popular suggestions
+  - Interests/industry preferences
+  - Work experience history
+  - CV/Resume upload
+
+- **Onboarding Process**
+  - Schedule onboarding call from available slots
+  - Meet with recruiter to discuss goals
+  - Account activation after successful onboarding
+
 - **Job Search & Discovery**
-  - Browse jobs with filters (type, location, experience level, remote/on-site)
-  - Search functionality
+  - Browse jobs with filters (type, location, experience, remote/hybrid/on-site)
+  - Advanced search functionality
   - Company profiles with open positions
   
 - **AI-Powered Recommendations**
   - Smart job matching based on skills and experience
-  - Match score calculation
+  - Match score calculation (0-100%)
   - Personalized job suggestions
 
-- **Application Management**
-  - One-click job applications
-  - Cover letter submission
-  - Application status tracking
-  - Interview scheduling notifications
+- **Application Tracking**
+  - Real-time status updates
+  - Interview scheduling for accepted applications
+  - In-app notifications
+  - Email notifications
 
-### For Administrators
-- **Dashboard Overview**
-  - Key metrics and statistics
-  - Recent applications
+- **Dashboard**
+  - Profile completion tracking
+  - Application statistics
   - Upcoming appointments
-  
+  - Quick actions
+
+### 👨‍💼 For Administrators & Moderators
+
+- **Dashboard Overview**
+  - Workflow alerts (pending onboarding, applications, interviews)
+  - Key metrics and statistics
+  - Today's appointments
+  - Recent activity
+
 - **User Management**
-  - View all registered users
-  - User profile details
-  - Activate/deactivate accounts
-  
+  - View all users with status filters
+  - Complete onboarding calls (pass/fail)
+  - Activate/suspend/reject accounts
+  - User profile details and history
+
 - **Application Review**
-  - Review and process applications
-  - Update application status
+  - Accept applications → Send interview invitations
+  - Reject applications → Notify candidates
   - Add notes and feedback
+  - Track application pipeline
+
+- **Interview Management**
+  - Schedule interviews with available slots
+  - Complete interviews with outcomes
+  - Make job offers
+  - Track hiring funnel
+
+- **Company & Job Management**
+  - Create/edit companies
+  - Create/edit job listings
+  - Toggle job status (active/paused/closed)
   
-- **Job Offers**
-  - Offer jobs directly to candidates
-  - Send personalized job offers
-  
-- **Appointments & Onboarding**
+- **Appointment System**
+  - Create available time slots
+  - Schedule onboarding calls
   - Schedule interviews
-  - Manage onboarding appointments
-  - Meeting link integration
-  
-- **Email Communication**
-  - Send emails to users
-  - Job offer notifications
-  - Interview invitations
+  - Track appointment outcomes
+
+- **Communication**
+  - In-app notifications
+  - Email communications
+  - Automated notifications for workflow events
 
 ## Technology Stack
 
-- **Backend**: PHP 7.4+
-- **Database**: MySQL 5.7+
-- **Frontend**: Bootstrap 5.3
+- **Backend**: PHP 8.0+
+- **Database**: MySQL 5.7+ / MariaDB 10.3+
+- **Frontend**: Bootstrap 5.3 (latest)
 - **JavaScript**: Vanilla JS with AJAX
 - **Icons**: Bootstrap Icons
 
 ## Installation
 
 ### Prerequisites
-- PHP 7.4 or higher
-- MySQL 5.7 or higher
+- PHP 8.0 or higher (PHP 7.4 minimum)
+- MySQL 5.7+ or MariaDB 10.3+
 - Apache/Nginx web server
 - mod_rewrite enabled (for Apache)
 
@@ -103,6 +140,7 @@ A complete job recruitment web application with database, frontend, and backend 
 
 5. **Set up uploads directory permissions**
    ```bash
+   mkdir -p assets/uploads/cv
    chmod 755 assets/uploads/cv
    ```
 
@@ -112,7 +150,7 @@ A complete job recruitment web application with database, frontend, and backend 
 
 7. **Access the application**
    
-   Open `http://localhost/recruit` in your browser.
+   Open your configured URL in your browser.
 
 ## Demo Credentials
 
@@ -120,11 +158,25 @@ A complete job recruitment web application with database, frontend, and backend 
 - **Email**: admin@recruit.com
 - **Password**: admin123
 
-### User Accounts
+### Moderator Accounts
+- **Email**: moderator@recruit.com
+- **Password**: mod123
+
+- **Email**: hr@recruit.com
+- **Password**: mod123
+
+### Active User Accounts (completed onboarding)
 - **Email**: john.doe@example.com
 - **Password**: password123
 
 - **Email**: jane.smith@example.com
+- **Password**: password123
+
+### Pending Onboarding Users (for testing workflow)
+- **Email**: pending.user@example.com
+- **Password**: password123
+
+- **Email**: scheduled.user@example.com
 - **Password**: password123
 
 ## Project Structure
@@ -132,38 +184,38 @@ A complete job recruitment web application with database, frontend, and backend 
 ```
 recruit/
 ├── admin/                  # Admin panel pages
-│   ├── index.php          # Admin dashboard
+│   ├── index.php          # Dashboard with workflow alerts
 │   ├── users.php          # User management
-│   ├── applications.php   # Application management
+│   ├── user.php           # User detail & actions
+│   ├── applications.php   # Application review
+│   ├── companies.php      # Company management
 │   ├── jobs.php           # Job management
-│   ├── appointments.php   # Appointment scheduling
-│   └── user.php           # User detail view
+│   └── appointments.php   # Appointment management
 ├── api/                    # API endpoints (AJAX)
 │   ├── auth.php           # Authentication
 │   ├── jobs.php           # Jobs operations
 │   ├── companies.php      # Companies operations
-│   └── admin.php          # Admin operations
+│   ├── appointments.php   # Appointment booking
+│   └── admin.php          # Admin/moderator operations
 ├── assets/
-│   ├── css/
-│   │   └── style.css      # Custom styles
-│   ├── js/
-│   │   ├── app.js         # Main JavaScript
-│   │   └── admin.js       # Admin panel JavaScript
-│   └── uploads/
-│       └── cv/            # CV uploads directory
+│   ├── css/style.css      # Custom styles
+│   ├── js/app.js          # Main JavaScript
+│   ├── js/admin.js        # Admin panel JavaScript
+│   └── uploads/cv/        # CV uploads directory
 ├── database/
 │   ├── schema.sql         # Database structure
 │   └── seed.sql           # Dummy data
 ├── includes/
 │   ├── config.php         # Configuration
 │   ├── database.php       # Database connection
-│   ├── auth.php           # Authentication functions
+│   ├── auth.php           # Authentication & authorization
 │   ├── functions.php      # Helper functions
 │   ├── navbar.php         # Navigation component
 │   └── footer.php         # Footer component
-├── pages/                  # Public pages
+├── pages/                  # User-facing pages
 │   ├── login.php          # Login page
-│   ├── register.php       # Registration page
+│   ├── register.php       # Multi-step registration
+│   ├── onboarding.php     # Onboarding scheduling
 │   ├── dashboard.php      # User dashboard
 │   ├── profile.php        # User profile
 │   ├── jobs.php           # Job listings
@@ -179,23 +231,48 @@ recruit/
 ## Database Schema
 
 ### Tables
-- **users** - User accounts and profiles
+- **users** - User accounts with account_status workflow field
 - **companies** - Company information
 - **jobs** - Job listings
-- **applications** - Job applications
-- **appointments** - Interview/onboarding appointments
-- **emails** - Sent email records
+- **applications** - Job applications with extended status workflow
+- **appointments** - Onboarding/interview appointments with outcomes
+- **notifications** - In-app notifications
+- **available_slots** - Available time slots for scheduling
+- **emails** - Email communication logs
 - **password_resets** - Password reset tokens
 - **activity_log** - User activity audit
+
+### Account Status Values
+- `pending_onboarding` - New registration, needs to schedule onboarding
+- `onboarding_scheduled` - Onboarding call is booked
+- `active` - Account activated, can apply for jobs
+- `suspended` - Account suspended by admin
+- `rejected` - Application rejected during onboarding
+
+### Application Status Values
+- `pending` - New application, awaiting review
+- `reviewed` - Reviewed by moderator
+- `shortlisted` - Shortlisted for interview
+- `interview_scheduled` - Interview is scheduled
+- `interview_completed` - Interview done, awaiting decision
+- `offered` - Job offer sent
+- `offer_accepted` - Offer accepted
+- `hired` - Hired
+- `rejected` - Not selected
+- `withdrawn` - Withdrawn by candidate
 
 ## Dummy Data
 
 The seed file includes:
 - 1 Admin user
-- 3 Sample job seekers
+- 2 Moderator users
+- 3 Active job seekers (completed onboarding)
+- 2 Pending users (for workflow testing)
 - 8 Companies across different industries
 - 20+ Active job listings
-- Sample applications and appointments
+- Sample applications in various stages
+- Sample appointments
+- Available time slots for onboarding
 
 ### Companies Included
 - TechCorp Solutions (Technology)
@@ -213,8 +290,10 @@ The seed file includes:
 - SQL injection prevention with prepared statements
 - XSS prevention with output escaping
 - Session-based authentication
-- CSRF protection on forms
+- Role-based access control (user/moderator/admin)
+- Account status validation
 - File upload validation
+- Activity logging
 
 ## Contributing
 

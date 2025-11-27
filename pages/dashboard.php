@@ -26,13 +26,22 @@ requireAuth();
 $user = getCurrentUser();
 $db = Database::getInstance();
 
+// Redirect to onboarding if not active
+if ($user['account_status'] !== 'active' && $user['role'] === 'user') {
+    header('Location: onboarding.php');
+    exit;
+}
+
 // Get user stats
 $stats = [
     'applications' => $db->count('applications', 'user_id = :id', ['id' => $user['id']]),
     'interviews' => $db->count('appointments', "user_id = :id AND type = 'interview' AND status IN ('scheduled', 'confirmed')", ['id' => $user['id']]),
-    'offers' => $db->count('applications', "user_id = :id AND status = 'offered'", ['id' => $user['id']]),
+    'offers' => $db->count('applications', "user_id = :id AND status IN ('offered', 'offer_accepted')", ['id' => $user['id']]),
     'profile_complete' => calculateProfileCompletion($user)
 ];
+
+// Get unread notifications count
+$unreadNotifications = getUnreadNotificationCount($user['id']);
 
 // Recent applications
 $recentApplications = $db->fetchAll(
@@ -48,6 +57,12 @@ $recentApplications = $db->fetchAll(
 // Upcoming appointments
 $upcomingAppointments = $db->fetchAll(
     "SELECT * FROM appointments WHERE user_id = :id AND scheduled_at >= NOW() AND status IN ('scheduled', 'confirmed') ORDER BY scheduled_at ASC LIMIT 3",
+    ['id' => $user['id']]
+);
+
+// Recent notifications
+$recentNotifications = $db->fetchAll(
+    "SELECT * FROM notifications WHERE user_id = :id ORDER BY created_at DESC LIMIT 5",
     ['id' => $user['id']]
 );
 

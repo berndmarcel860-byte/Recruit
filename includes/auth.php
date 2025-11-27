@@ -37,19 +37,31 @@ function registerUser($data) {
         }
     }
     
-    // Set defaults
+    // Set defaults - new users start with pending_onboarding status
     $data['role'] = 'user';
+    $data['account_status'] = 'pending_onboarding';
     $data['is_active'] = 1;
     
     try {
         $userId = $db->insert('users', $data);
         $user = getUserById($userId);
         
+        // Create welcome notification
+        $db->insert('notifications', [
+            'user_id' => $userId,
+            'type' => 'onboarding',
+            'title' => 'Welcome to ' . APP_NAME . '!',
+            'message' => 'Please schedule your onboarding appointment to get started with your job search.',
+            'link' => 'pages/onboarding.php',
+            'priority' => 'high'
+        ]);
+        
         // Log user in
         $_SESSION['user_id'] = $userId;
         $_SESSION['user_role'] = $user['role'];
+        $_SESSION['account_status'] = $user['account_status'];
         
-        return ['success' => true, 'user' => $user, 'message' => 'Registration successful'];
+        return ['success' => true, 'user' => $user, 'message' => 'Registration successful! Please schedule your onboarding appointment.'];
     } catch (Exception $e) {
         return ['success' => false, 'message' => 'Registration failed: ' . $e->getMessage()];
     }
@@ -75,16 +87,33 @@ function loginUser($email, $password) {
         return ['success' => false, 'message' => 'Account is deactivated'];
     }
     
+    if ($user['account_status'] === 'suspended') {
+        return ['success' => false, 'message' => 'Your account has been suspended. Please contact support.'];
+    }
+    
+    if ($user['account_status'] === 'rejected') {
+        return ['success' => false, 'message' => 'Your application was not approved. Please contact support for more information.'];
+    }
+    
     // Update last login
     $db->update('users', ['last_login' => date('Y-m-d H:i:s')], 'id = :id', ['id' => $user['id']]);
     
     // Set session
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_role'] = $user['role'];
+    $_SESSION['account_status'] = $user['account_status'];
     
     unset($user['password']);
     
-    return ['success' => true, 'user' => $user, 'message' => 'Login successful'];
+    // Determine redirect based on account status
+    $redirect = 'pages/dashboard.php';
+    if ($user['role'] === 'admin' || $user['role'] === 'moderator') {
+        $redirect = 'admin/index.php';
+    } elseif ($user['account_status'] === 'pending_onboarding') {
+        $redirect = 'pages/onboarding.php';
+    }
+    
+    return ['success' => true, 'user' => $user, 'message' => 'Login successful', 'redirect' => $redirect];
 }
 
 /**
@@ -107,6 +136,27 @@ function isLoggedIn() {
  */
 function isAdmin() {
     return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+}
+
+/**
+ * Check if current user is moderator or admin
+ */
+function isModerator() {
+    return isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['admin', 'moderator']);
+}
+
+/**
+ * Check if user has completed onboarding
+ */
+function hasCompletedOnboarding() {
+    return isset($_SESSION['account_status']) && $_SESSION['account_status'] === 'active';
+}
+
+/**
+ * Get user's account status
+ */
+function getAccountStatus() {
+    return $_SESSION['account_status'] ?? 'pending_onboarding';
 }
 
 /**
@@ -136,6 +186,33 @@ function getUserById($id) {
         }
     }
     return $user;
+}
+
+/**
+ * Update user's account status
+ */
+function updateAccountStatus($userId, $status, $notes = null, $adminId = null) {
+    $db = Database::getInstance();
+    
+    $data = ['account_status' => $status];
+    
+    if ($status === 'active') {
+        $data['activated_at'] = date('Y-m-d H:i:s');
+        $data['activated_by'] = $adminId;
+    }
+    
+    if ($notes) {
+        $data['onboarding_notes'] = $notes;
+    }
+    
+    $db->update('users', $data, 'id = :id', ['id' => $userId]);
+    
+    // Update session if updating current user
+    if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $userId) {
+        $_SESSION['account_status'] = $status;
+    }
+    
+    return true;
 }
 
 /**
@@ -200,4 +277,51 @@ function requireAdmin() {
         header('Location: ' . APP_URL . '/pages/dashboard.php');
         exit;
     }
+}
+
+/**
+ * Require moderator or admin role
+ */
+function requireModerator() {
+    requireAuth();
+    if (!isModerator()) {
+        header('Location: ' . APP_URL . '/pages/dashboard.php');
+        exit;
+    }
+}
+
+/**
+ * Require completed onboarding for accessing job features
+ */
+function requireActiveAccount() {
+    requireAuth();
+    if (!hasCompletedOnboarding()) {
+        header('Location: ' . APP_URL . '/pages/onboarding.php');
+        exit;
+    }
+}
+
+/**
+ * Create notification for user
+ */
+function createNotification($userId, $type, $title, $message, $link = null, $priority = 'normal', $relatedId = null, $relatedType = null) {
+    $db = Database::getInstance();
+    return $db->insert('notifications', [
+        'user_id' => $userId,
+        'type' => $type,
+        'title' => $title,
+        'message' => $message,
+        'link' => $link,
+        'priority' => $priority,
+        'related_id' => $relatedId,
+        'related_type' => $relatedType
+    ]);
+}
+
+/**
+ * Get unread notification count for user
+ */
+function getUnreadNotificationCount($userId) {
+    $db = Database::getInstance();
+    return $db->count('notifications', 'user_id = :id AND is_read = 0', ['id' => $userId]);
 }

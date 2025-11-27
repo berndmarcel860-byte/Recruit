@@ -127,13 +127,17 @@ function getCompanySizeLabel($size) {
  */
 function getStatusBadgeClass($status) {
     $classes = [
-        'pending' => 'bg-warning',
+        'pending' => 'bg-warning text-dark',
         'reviewed' => 'bg-info',
         'shortlisted' => 'bg-primary',
+        'interview_scheduled' => 'bg-info',
+        'interview_completed' => 'bg-secondary',
         'interview' => 'bg-primary',
         'offered' => 'bg-success',
+        'offer_accepted' => 'bg-success',
         'hired' => 'bg-success',
-        'rejected' => 'bg-danger'
+        'rejected' => 'bg-danger',
+        'withdrawn' => 'bg-secondary'
     ];
     return $classes[$status] ?? 'bg-secondary';
 }

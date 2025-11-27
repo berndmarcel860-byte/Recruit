@@ -8,20 +8,28 @@ USE recruit_db;
 -- =====================================================
 -- Insert Admin User (password: admin123)
 -- =====================================================
-INSERT INTO users (email, password, first_name, last_name, phone, city, country, role, is_active) VALUES
-('admin@recruit.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', '+1 (555) 000-0000', 'San Francisco', 'USA', 'admin', 1);
+INSERT INTO users (email, password, first_name, last_name, phone, city, country, role, account_status, is_active) VALUES
+('admin@recruit.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', '+1 (555) 000-0000', 'San Francisco', 'USA', 'admin', 'active', 1);
+
+-- =====================================================
+-- Insert Moderator User (password: mod123)
+-- =====================================================
+INSERT INTO users (email, password, first_name, last_name, phone, city, country, role, account_status, is_active) VALUES
+('moderator@recruit.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Sarah', 'Moderator', '+1 (555) 000-0001', 'San Francisco', 'USA', 'moderator', 'active', 1),
+('hr@recruit.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR', 'Manager', '+1 (555) 000-0002', 'New York', 'USA', 'moderator', 'active', 1);
 
 -- =====================================================
 -- Insert Sample Users (password: password123)
+-- Active users (completed onboarding)
 -- =====================================================
-INSERT INTO users (email, password, first_name, last_name, phone, city, country, bio, skills, interests, experience, education, role) VALUES
+INSERT INTO users (email, password, first_name, last_name, phone, city, country, bio, skills, interests, experience, education, role, account_status, is_active, activated_at, activated_by) VALUES
 ('john.doe@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'John', 'Doe', '+1 (555) 111-1111', 'New York', 'USA', 
  'Experienced software developer with 5 years of experience in full-stack development.',
  '["JavaScript", "React", "Node.js", "Python", "SQL"]',
  '["Technology", "AI", "Web Development"]',
  '[{"company": "Tech Startup", "title": "Senior Developer", "startDate": "2020-01-01", "current": true}, {"company": "Web Agency", "title": "Developer", "startDate": "2017-06-01", "endDate": "2019-12-31"}]',
  '[{"school": "MIT", "degree": "BS Computer Science", "year": 2017}]',
- 'user'),
+ 'user', 'active', 1, NOW(), 1),
 
 ('jane.smith@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Jane', 'Smith', '+1 (555) 222-2222', 'San Francisco', 'USA',
  'Data scientist passionate about machine learning and AI.',
@@ -29,7 +37,7 @@ INSERT INTO users (email, password, first_name, last_name, phone, city, country,
  '["Data Science", "AI", "Healthcare"]',
  '[{"company": "AI Research Lab", "title": "Data Scientist", "startDate": "2019-03-01", "current": true}]',
  '[{"school": "Stanford", "degree": "MS Data Science", "year": 2019}]',
- 'user'),
+ 'user', 'active', 1, NOW(), 1),
 
 ('mike.johnson@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Mike', 'Johnson', '+1 (555) 333-3333', 'Austin', 'USA',
  'Project manager with experience in renewable energy sector.',
@@ -37,7 +45,23 @@ INSERT INTO users (email, password, first_name, last_name, phone, city, country,
  '["Energy", "Sustainability", "Management"]',
  '[{"company": "Solar Company", "title": "Project Manager", "startDate": "2018-01-01", "current": true}]',
  '[{"school": "Texas A&M", "degree": "MBA", "year": 2017}]',
- 'user');
+ 'user', 'active', 1, NOW(), 1);
+
+-- =====================================================
+-- Insert Users with Pending Onboarding (for demo)
+-- =====================================================
+INSERT INTO users (email, password, first_name, last_name, phone, city, country, bio, skills, interests, role, account_status, is_active) VALUES
+('pending.user@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Pending', 'User', '+1 (555) 444-4444', 'Chicago', 'USA',
+ 'New user waiting for onboarding.',
+ '["JavaScript", "HTML", "CSS"]',
+ '["Technology", "Web Development"]',
+ 'user', 'pending_onboarding', 1),
+
+('scheduled.user@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Scheduled', 'User', '+1 (555) 555-5555', 'Miami', 'USA',
+ 'User with scheduled onboarding appointment.',
+ '["Python", "Data Analysis"]',
+ '["Data Science", "Finance"]',
+ 'user', 'onboarding_scheduled', 1);
 
 -- =====================================================
 -- Insert Companies
@@ -244,17 +268,50 @@ INSERT INTO jobs (company_id, title, description, requirements, responsibilities
  DATE_ADD(NOW(), INTERVAL 60 DAY), 'active');
 
 -- =====================================================
--- Insert Sample Applications
+-- Insert Sample Applications (for active users)
 -- =====================================================
 INSERT INTO applications (user_id, job_id, status, cover_letter, source, match_score) VALUES
-(2, 1, 'pending', 'I am very interested in this position and believe my skills align well with the requirements.', 'manual', 85.00),
-(3, 4, 'reviewed', 'I would love to join your team and contribute to your innovative projects.', 'ai-recommended', 92.00);
+(4, 1, 'pending', 'I am very interested in this position and believe my skills align well with the requirements.', 'manual', 85.00),
+(5, 4, 'interview_scheduled', 'I would love to join your team and contribute to your innovative projects.', 'ai-recommended', 92.00),
+(6, 13, 'shortlisted', 'My project management experience makes me an ideal fit for this solar role.', 'manual', 88.00);
 
 -- =====================================================
--- Insert Sample Appointment
+-- Insert Sample Appointments (onboarding and interviews)
 -- =====================================================
-INSERT INTO appointments (user_id, application_id, created_by, type, title, description, scheduled_at, duration, location, meeting_link, status) VALUES
-(2, 1, 1, 'interview', 'Technical Interview', 'First round technical interview with the engineering team', DATE_ADD(NOW(), INTERVAL 7 DAY), 60, 'Zoom Meeting', 'https://zoom.us/j/123456789', 'scheduled');
+INSERT INTO appointments (user_id, application_id, created_by, type, title, description, scheduled_at, duration, location, meeting_link, status, outcome, booked_by_user) VALUES
+-- Onboarding appointment for scheduled user
+(8, NULL, 1, 'onboarding', 'Initial Onboarding Call', 'Welcome call to discuss the platform and your job search goals', DATE_ADD(NOW(), INTERVAL 3 DAY), 30, 'Virtual', 'https://zoom.us/j/onboarding123', 'scheduled', 'pending', 1),
+-- Interview for Jane Smith
+(5, 2, 1, 'interview', 'Technical Interview - Data Scientist', 'First round technical interview with the data science team', DATE_ADD(NOW(), INTERVAL 7 DAY), 60, 'Zoom Meeting', 'https://zoom.us/j/interview456', 'scheduled', 'pending', 0);
+
+-- =====================================================
+-- Insert Available Time Slots for Onboarding
+-- =====================================================
+INSERT INTO available_slots (admin_id, slot_date, start_time, end_time, slot_type, is_booked) VALUES
+-- Next 7 days of available slots
+(1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '09:00:00', '09:30:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '10:00:00', '10:30:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '14:00:00', '14:30:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '09:00:00', '09:30:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '11:00:00', '11:30:00', 'both', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '15:00:00', '15:30:00', 'both', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '09:00:00', '09:30:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '10:30:00', '11:00:00', 'onboarding', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 4 DAY), '14:00:00', '14:30:00', 'both', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 5 DAY), '10:00:00', '10:30:00', 'interview', 0),
+(1, DATE_ADD(CURDATE(), INTERVAL 5 DAY), '11:00:00', '11:30:00', 'interview', 0),
+(2, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '13:00:00', '13:30:00', 'onboarding', 0),
+(2, DATE_ADD(CURDATE(), INTERVAL 2 DAY), '09:30:00', '10:00:00', 'onboarding', 0),
+(2, DATE_ADD(CURDATE(), INTERVAL 3 DAY), '14:00:00', '14:30:00', 'both', 0);
+
+-- =====================================================
+-- Insert Sample Notifications
+-- =====================================================
+INSERT INTO notifications (user_id, type, title, message, link, is_read, priority) VALUES
+(7, 'onboarding', 'Welcome to Recruit!', 'Please schedule your onboarding appointment to get started.', 'pages/onboarding.php', 0, 'high'),
+(8, 'onboarding', 'Onboarding Scheduled', 'Your onboarding call has been scheduled. See you soon!', 'pages/dashboard.php', 0, 'normal'),
+(5, 'interview', 'Interview Scheduled', 'Your technical interview for Data Scientist position has been scheduled.', 'pages/applications.php', 0, 'high'),
+(4, 'application', 'Application Received', 'Your application for Senior Software Engineer has been received and is under review.', 'pages/applications.php', 1, 'normal');
 
 -- =====================================================
 -- Display Summary
