@@ -16,6 +16,10 @@ define('APP_NAME', 'Recruit');
 define('APP_URL', 'http://localhost/recruit');
 define('APP_VERSION', '1.0.0');
 
+// Meeting/Video call settings
+define('MEETING_URL_BASE', 'https://meet.recruit.com'); // Change to your video meeting URL
+define('SUPPORT_EMAIL', 'support@recruit.com');
+
 // Session settings
 define('SESSION_LIFETIME', 7200); // 2 hours
 

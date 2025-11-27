@@ -59,7 +59,7 @@ switch ($action) {
             'scheduled_at' => $scheduledAt,
             'duration' => $duration,
             'location' => 'Virtual',
-            'meeting_link' => 'https://meet.recruit.com/onboarding/' . generateToken(8),
+            'meeting_link' => MEETING_URL_BASE . '/onboarding/' . generateToken(8),
             'status' => 'scheduled',
             'booked_by_user' => 1
         ]);
@@ -275,7 +275,7 @@ switch ($action) {
             'scheduled_at' => $scheduledAt,
             'duration' => $duration,
             'location' => 'Virtual',
-            'meeting_link' => 'https://meet.recruit.com/interview/' . generateToken(8),
+            'meeting_link' => MEETING_URL_BASE . '/interview/' . generateToken(8),
             'status' => 'scheduled',
             'booked_by_user' => 1
         ]);
